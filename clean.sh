@@ -27,6 +27,7 @@ rm -rf  blocks/
 rm -rf snapshots/
 rm -rf state/
 rm -rf  bpnode.log
+rm -rf  core.*
 
 cd  /work/gst_install/test2/
 
@@ -34,6 +35,7 @@ rm -rf  blocks/
 rm -rf snapshots/
 rm -rf state/
 rm -rf  bpnode.log
+rm -rf  core.*
 
 cd  /work/gst_install/test3/
 
@@ -41,14 +43,21 @@ rm -rf  blocks/
 rm -rf snapshots/
 rm -rf state/
 rm -rf  bpnode.log
+rm -rf  core.*
 
 cd  /work/gst_install/test4/
 rm -rf  blocks/
 rm -rf snapshots/
 rm -rf state/
 rm -rf  bpnode.log
+rm -rf  core.*
 
-
+cd  /work/gst_install/test5/
+rm -rf  blocks/
+rm -rf snapshots/
+rm -rf state/
+rm -rf  bpnode.log
+rm -rf  core.*
 
 
 
