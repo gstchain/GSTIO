@@ -304,10 +304,37 @@ namespace gstio {
 				name             code;
 				name             account;
 				optional<string> symbol;
+				bool			 isAll;
 			};
 
 			vector<asset> get_currency_balance(const get_currency_balance_params& params)const;
 
+			struct get_table_scopes_rows_params {
+				bool             json = false;
+				name             code;
+				name             table = 0;
+				string           lower_bound;
+				string           upper_bound;
+				uint32_t         limit = 10;
+				// uint32_t         limit;
+				unsigned int	 page = 1;
+				size_t			 size = 10;
+			};
+
+			struct get_table_scopes_rows_result_scope {
+				name                scope;
+				string				symbol;
+				vector<fc::variant> rows;
+			};
+
+			struct get_table_scopes_rows_result {
+				vector<get_table_scopes_rows_result_scope>  scopes;
+				size_t			 count = 0;
+				string           more;
+			};
+
+			get_table_scopes_rows_result get_table_scopes_rows( const get_table_scopes_rows_params& params )const;
+			
 			struct get_currency_stats_params {
 				name           code;
 				string         symbol;
@@ -667,7 +694,6 @@ namespace gstio {
 
 		unique_ptr<class chain_plugin_impl> my;
 	};
-
 }
 
 FC_REFLECT(gstio::chain_apis::permission, (perm_name)(parent)(required_auth))
@@ -687,6 +713,9 @@ FC_REFLECT(gstio::chain_apis::read_only::get_table_by_scope_result_row, (code)(s
 FC_REFLECT(gstio::chain_apis::read_only::get_table_by_scope_result, (rows)(more));
 
 FC_REFLECT(gstio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
+FC_REFLECT(gstio::chain_apis::read_only::get_table_scopes_rows_params, (json)(code)(table)(lower_bound)(upper_bound)(limit)(page)(size));
+FC_REFLECT(gstio::chain_apis::read_only::get_table_scopes_rows_result_scope, (scope)(symbol)(rows));
+FC_REFLECT(gstio::chain_apis::read_only::get_table_scopes_rows_result, (scopes)(count)(more));
 FC_REFLECT(gstio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT(gstio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 

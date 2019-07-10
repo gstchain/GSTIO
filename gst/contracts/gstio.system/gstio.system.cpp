@@ -193,9 +193,9 @@ GSTIO_ABI(gstiosystem::system_contract,
 	// gstio.system.cpp
 	(setram)(setparams)(setpriv)(rmvproducer)(bidname)
 	// delegate_bandwidth.cpp
-	(buyrambytes)(buyram)(buymem)(buymembytes)(sellram)(delegatebw)(undelegatebw)(refund)(voterewards)
+	(delegatebw)(undelegatebw)(refund)(voterewards)
 	// voting.cpp
-	(regproducer)(unregprod)(voteproducer)(regproxy)
+	(regproducer)(unregprod)(voteproducer)(regproxy)(claimvrew)		//2019/03/11
 	// producer_pay.cpp
-	(onblock)(claimrewards)
+	(onblock)(claimrewards)(prodrewards)	//2019/03/12
 )

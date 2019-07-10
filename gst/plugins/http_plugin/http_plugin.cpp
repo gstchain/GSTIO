@@ -276,6 +276,7 @@ namespace gstio {
                }
 
                if(req.get_method() == "OPTIONS") {
+                  con->append_header( "Content-type", "application/json" );
                   con->set_status(websocketpp::http::status_code::ok);
                   return;
                }

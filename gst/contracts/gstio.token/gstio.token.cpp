@@ -27,6 +27,7 @@ namespace gstio {
 			s.supply.symbol = maximum_supply.symbol;
 			s.max_supply = maximum_supply;
 			s.issuer = issuer;
+			s.createAt = current_time();
 		});
 	}
 
@@ -90,7 +91,7 @@ namespace gstio {
 
 		//string con ="gstio.stake";
 		if (to != N(gstio.stake) && from != N(gstio.stake) && from != N(gstio) \
-			&& from != N(gstio.vpay) && from != N(gstio.bpay) && from != N(gstio.vote))
+			&& from != N(gstio.vpay) && from != N(gstio.bpay) && from != N(gstio.vote) && from!=N(gstio.mine) )
 		{
 			auto fee = quantity;
 
@@ -114,14 +115,10 @@ namespace gstio {
 		gstio_assert(from.balance.amount >= value.amount, "overdrawn balance");
 
 
-		if (from.balance.amount == value.amount) {
-			from_acnts.erase(from);
-		}
-		else {
-			from_acnts.modify(from, owner, [&](auto& a) {
-				a.balance -= value;
-			});
-		}
+		from_acnts.modify(from, owner, [&](auto& a) {
+		a.balance -= value;
+		});
+		
 	}
 
 	void token::add_balance(account_name owner, asset value, account_name ram_payer)

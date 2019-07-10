@@ -1281,16 +1281,154 @@ if( options.count(name) ) { \
 
 				GST_ASSERT(cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
 
-				if (!p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol)) {
+				if(p.isAll) {
 					results.emplace_back(cursor);
+				}else if (!p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol)) {
+					results.emplace_back(cursor);
+					return false;
 				}
 
 				// return false if we are looking for one and found it, true otherwise
-				return !(p.symbol && boost::iequals(cursor.symbol_name(), *p.symbol));
+				// return !(p.symbol && boost::iequals(cursor.symbol_name(), *p.symbol));
+				return true;
 			});
 
 			return results;
 		}
+
+
+		read_only::get_table_scopes_rows_result read_only::get_table_scopes_rows( const read_only::get_table_scopes_rows_params& params )const {
+		    get_table_scopes_rows_result results;
+
+			if("stat" == params.table){
+				// 构造获取table scope的参数
+				const get_table_by_scope_params table_scope_params = get_table_by_scope_params {
+					.code        = params.code,
+					.table       = params.table,
+					.lower_bound = "",
+					.upper_bound = "",
+					.limit       = 0,
+				};
+
+				// 获取table scope
+				const auto table_scope_result = get_table_by_scope( table_scope_params );
+
+				// 根据每一个scope，获取该scope所在的的table
+				auto count = 0;
+				auto begin_pos = (params.page - 1) * params.size;
+				auto end_pos = params.page * params.size;
+				auto vec = table_scope_result.rows;
+
+				for ( auto &table_scope : table_scope_result.rows ) {
+					
+					if(count >= begin_pos && count < end_pos){
+						// 构造获取table的参数
+						const get_table_rows_params table_rows_params = get_table_rows_params {
+							.json  = params.json,
+							.code  = table_scope.code,
+							.scope = table_scope.scope.to_string(),
+							.table = table_scope.table,
+						};
+
+						// 获取当前scope所在的table
+						const auto table_rows_result = get_table_rows( table_rows_params );
+
+						get_table_scopes_rows_result_scope scope;
+
+						for ( auto &row : table_rows_result.rows ) {
+							scope.rows.emplace_back( row );
+						}
+						scope.scope = table_scope.scope;
+
+						uint64_t v = table_scope.scope.value;
+						//v >>= 8;
+						std::string str;
+						while (v > 0) {
+							char c = v & 0xFF;
+							str += c;
+							v >>= 8;
+						}
+						std::cout << str;
+						scope.symbol = str;
+
+						results.scopes.emplace_back( scope );
+					}
+
+					count++;
+				}
+
+				// 表中scope总量
+				results.count =  vec.size();
+				
+				// 如果more不为空，调用get_table_scope_rows时设置lower_bound参数为该more数据，获取更多
+				results.more = table_scope_result.more;
+
+				return results;
+			}else{
+
+				// 构造获取table scope的参数
+				const get_table_by_scope_params table_scope_params = get_table_by_scope_params {
+					.code        = params.code,
+					.table       = params.table,
+					.lower_bound = params.lower_bound,
+					.upper_bound = params.upper_bound,
+					.limit       = params.limit,
+				};
+
+				// 获取table scope
+				const auto table_scope_result = get_table_by_scope( table_scope_params );
+
+				// 根据每一个scope，获取该scope所在的的table
+				for ( auto &table_scope : table_scope_result.rows ) {
+				
+					// 构造获取table的参数
+					const get_table_rows_params table_rows_params = get_table_rows_params {
+						.json  = params.json,
+						.code  = table_scope.code,
+						.scope = table_scope.scope.to_string(),
+						.table = table_scope.table,
+					};
+
+					// 获取当前scope所在的table
+					const auto table_rows_result = get_table_rows( table_rows_params );
+
+					get_table_scopes_rows_result_scope scope;
+
+					for ( auto &row : table_rows_result.rows ) {
+						scope.rows.emplace_back( row );
+					}
+					scope.scope = table_scope.scope;
+
+					results.scopes.emplace_back( scope );
+				}
+
+				// 计算表中成员总数
+				
+				
+				if("producers" == params.table){
+					results.count =  0;
+				}else{
+					// 构造获取所有table scope的参数
+					const get_table_by_scope_params table_scope_params_all = get_table_by_scope_params {
+						.code        = params.code,
+						.table       = params.table,
+						.lower_bound = "",
+						.upper_bound = "",
+						.limit       = 0,
+					};
+					// 获取所有的table scope
+					const auto table_scope_result_all = get_table_by_scope( table_scope_params_all );
+					// 表中scope总量
+					results.count =  table_scope_result_all.rows.size();
+				}
+				
+				// 如果more不为空，调用get_table_scope_rows时设置lower_bound参数为该more数据，获取更多
+				results.more = table_scope_result.more;
+
+				return results;
+			}
+		}
+
 
 		fc::variant read_only::get_currency_stats(const read_only::get_currency_stats_params& p)const {
 			fc::mutable_variant_object results;
@@ -1503,7 +1641,10 @@ if( options.count(name) ) { \
 
 		fc::variant read_only::get_block(const read_only::get_block_params& params) const {
 			signed_block_ptr block;
-			GST_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
+			
+			bool stats = false;			
+
+		    GST_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
 			try {
 				block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
 				if (!block) {
@@ -1517,18 +1658,24 @@ if( options.count(name) ) { \
 			fc::variant pretty_output;
 			abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer_max_time), abi_serializer_max_time);
 
+			if(db.last_irreversible_block_num() > block->block_num())
+			{
+				stats = true;
+			}
+
 			uint32_t ref_block_prefix = block->id()._hash[1];
 
 			return fc::mutable_variant_object(pretty_output.get_object())
 				("id", block->id())
 				("block_num", block->block_num())
-				("ref_block_prefix", ref_block_prefix);
+				("ref_block_prefix", ref_block_prefix)
+				("stats",stats);
 		}
 
 		fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
 			block_state_ptr b;
 			optional<uint64_t> block_num;
-			//std::exception_ptr e;
+			std::exception_ptr e;
 			try {
 				block_num = fc::to_uint64(params.block_num_or_id);
 			}

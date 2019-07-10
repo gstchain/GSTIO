@@ -222,10 +222,8 @@
          {"name":"net_weight", "type":"asset"},
          {"name":"cpu_weight", "type":"asset"},
          {"name":"ram_bytes", "type":"uint64"},
-	 {"name":"reward", "type":"asset"},
-	 {"name":"del_time", "type":"time_point_sec"},
-	 {"name":"pay_time", "type":"time_point_sec"},
-	 {"name":"staked", "type":"asset"}
+	       {"name":"votereward", "type":"asset"},
+         {"name":"prodreward", "type":"asset"}
       ]
     },{
       "name": "total_resources",
@@ -235,7 +233,8 @@
          {"name":"net_weight", "type":"asset"},
          {"name":"cpu_weight", "type":"asset"},
          {"name":"ram_bytes", "type":"uint64"},
-	 {"name":"reward", "type":"asset"},
+	       {"name":"votereward", "type":"asset"},
+         {"name":"prodreward", "type":"asset"},
       ]
     },{
       "name": "refund_request",
@@ -282,25 +281,39 @@
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
+         {"name":"prodtotal_bucket",             "type":"int64"},
+         {"name":"pertovote_bucket",              "type":"int64"},
          {"name":"total_unpaid_blocks",           "type":"uint32"},
+         {"name":"total_vote_stake",              "type":"int64"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
          {"name":"last_producer_schedule_size",   "type":"uint16"},
          {"name":"total_producer_vote_weight",    "type":"float64"},
+         {"name":"last_calculate_time",			  "type":"uint64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
     },{
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",           "type":"account_name"},
-         {"name":"total_votes",     "type":"float64"},
-         {"name":"producer_key",    "type":"public_key"},
-         {"name":"is_active",       "type":"bool"},
-         {"name":"url",             "type":"string"},
-         {"name":"unpaid_blocks",   "type":"uint32"},
-         {"name":"last_claim_time", "type":"uint64"},
-         {"name":"location",        "type":"uint16"}
+         {"name":"owner",             "type":"account_name"},
+         {"name":"total_votes",       "type":"float64"},
+         {"name":"producer_key",      "type":"public_key"},
+         {"name":"is_active",         "type":"bool"},
+         {"name":"url",               "type":"string"},
+         {"name":"unpaid_blocks",     "type":"uint32"},
+         {"name":"last_claim_time",   "type":"uint64"},
+         {"name":"location",          "type":"uint16"},
+         {"name":"votes_from_voters", "type":"int64"},
+         {"name":"total_blocks",      "type":"uint32"},
+         {"name":"votes_rate",        "type":"float64"},
+         {"name":"last_vote_unclaim", "type":"int64"},
+         {"name":"bunclaim",          "type":"asset"},
+         {"name":"vunclaim",          "type":"asset"},
+         {"name":"unclaim",           "type":"asset"},
+         {"name":"cbunclaim",         "type":"asset"},
+         {"name":"cvunclaim",         "type":"asset"},
+         {"name":"cunclaim",          "type":"asset"},
       ]
     },{
       "name": "regproducer",
@@ -346,6 +359,7 @@
         {"name":"proxy",                "type":"account_name"},
         {"name":"producers",            "type":"account_name[]"},
         {"name":"staked",               "type":"int64"},
+        {"name":"last_staked",          "type":"int64"},
         {"name":"last_vote_weight",     "type":"float64"},
         {"name":"proxied_vote_weight",  "type":"float64"},
         {"name":"is_proxy",             "type":"bool"}
@@ -358,6 +372,18 @@
       ]
     },{
       "name": "claimrewards",
+      "base": "",
+      "fields": [
+        {"name":"owner",   "type":"account_name"}
+      ]
+    },{
+      "name": "prodrewards",
+      "base": "",
+      "fields": [
+        {"name":"owner",   "type":"account_name"}
+      ]
+    },{
+      "name": "claimvrew",
       "base": "",
       "fields": [
         {"name":"owner",   "type":"account_name"}
@@ -544,6 +570,14 @@
    },{
       "name": "claimrewards",
       "type": "claimrewards",
+      "ricardian_contract": ""
+   },{
+      "name": "prodrewards",
+      "type": "prodrewards",
+      "ricardian_contract": ""
+   },{
+      "name": "claimvrew",
+      "type": "claimvrew",
       "ricardian_contract": ""
    },{
       "name": "setpriv",
