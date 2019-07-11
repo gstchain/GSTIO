@@ -1,0 +1,6 @@
+info  2019-07-11T06:23:20.086 thread-0  wallet_plugin.cpp:42          plugin_initialize    ] initializing wallet plugin
+warn  2019-07-11T06:23:20.087 thread-0  wallet_plugin.cpp:68          plugin_initialize    ] 3120000 wallet_exception: Wallet exception
+Failed to lock access to wallet directory; is another kgstd running?
+    {}
+    thread-0  wallet_manager.cpp:289 initialize_lock
+Failed to initialize
