@@ -1,6 +1,6 @@
 # gst
 
-本篇文档教程环境： centos7  2核8G （推荐配置）  
+本篇文档教程环境： centos7  2核8G （低配）  
 1.	拉取源码 源码地址： https://github.com/gsthot/gst.git
 2.	进入到gst目录下    
 执行：   
