@@ -32,27 +32,27 @@ clgst create account gstio gstio.vpay GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHk
 clgst create account gstio gstio.vote GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz GST659CGCoztnkD5cswR6eeLHZS4Le1E5QJzX6zt7e45j8MEwVaGU
 clgst create account gstio dice GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz GST659CGCoztnkD5cswR6eeLHZS4Le1E5QJzX6zt7e45j8MEwVaGU
 
-echo -e "\033[32m ÕıÔÚ°²×°ºÏÔ¼...\033[0m"
+echo -e "\033[32m éƒ¨ç½²åˆçº¦...\033[0m"
 
 cd /work/gst_install/gst
 
-echo -e "\033[32m 1. °²×°gstio.biosºÏÔ¼...\033[0m"
+echo -e "\033[32m 1. gstio.biosåˆçº¦...\033[0m"
 clgst set contract gstio build/contracts/gstio.bios -p gstio
 
 
-echo -e "\033[32m 2. °²×°gstio.tokenºÏÔ¼...\033[0m"
+echo -e "\033[32m 2. gstio.token...\033[0m"
 clgst set contract gstio.token build/contracts/gstio.token -p gstio.token
 
-echo -e "\033[32m 3. °²×°gstio.msigºÏÔ¼...\033[0m"
+echo -e "\033[32m 3. gstio.msig...\033[0m"
 clgst set contract gstio.msig build/contracts/gstio.msig -p gstio.msig
 
-echo -e "\033[32m 4. ·¢ĞĞ´ú±Ò GST ·¢ĞĞÈËgstio ...\033[0m"
+echo -e "\033[32m 4. å‘è¡Œä»£å¸ GST å‘è¡Œäººgstio ...\033[0m"
 clgst push action gstio.token create '["gstio", "10000000000.0000 GST"]' -p gstio.token
 
-echo -e "\033[32m 5. ½«´ú±ÒGST×Ê²ú´òÈëgstioÕË»§ ...\033[0m"
+echo -e "\033[32m 5. å°†ä»£å¸GSTèµ„äº§æ‰“å…¥gstioè´¦æˆ· ...\033[0m"
 clgst push action gstio.token issue '["gstio", "1000000000.0000 GST", "issue message"]' -p gstio
 
-echo -e "\033[32m 6. °²×°gstio.system ºÏÔ¼...\033[0m"
+echo -e "\033[32m 6. gstio.system åˆçº¦...\033[0m"
 clgst set contract gstio build/contracts/gstio.system -p gstio -x 1000
  
 
@@ -62,14 +62,10 @@ clgst get account gstio
 sleep 2s
 
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
-echo -e "\033[32m create account voter1 \033[0m"
+echo -e "\033[32m create account voter1/voter2/voter3/voter4/voter5 \033[0m"
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
+
 clgst system newaccount gstio voter1 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz GST659CGCoztnkD5cswR6eeLHZS4Le1E5QJzX6zt7e45j8MEwVaGU
-
-echo -e "\033[31m----------------------------------------------------------------------\033[0m"
-echo -e "\033[32m create account voter2/voter3/voter4/voter5 \033[0m"
-echo -e "\033[31m----------------------------------------------------------------------\033[0m"
-
 clgst system newaccount gstio voter2 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz GST659CGCoztnkD5cswR6eeLHZS4Le1E5QJzX6zt7e45j8MEwVaGU
 clgst system newaccount gstio voter3 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz GST659CGCoztnkD5cswR6eeLHZS4Le1E5QJzX6zt7e45j8MEwVaGU
 clgst system newaccount gstio voter4 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz GST659CGCoztnkD5cswR6eeLHZS4Le1E5QJzX6zt7e45j8MEwVaGU
@@ -89,16 +85,16 @@ clgst system newaccount gstio bp4 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVA
 
 clgst system newaccount gstio bp5 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz GST659CGCoztnkD5cswR6eeLHZS4Le1E5QJzX6zt7e45j8MEwVaGU
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
-echo -e "\033[35m ½«bp1×¢²áÎª³¬¼¶½Úµã...\033[0m"
+echo -e "\033[35m å°†bp1æ³¨å†Œä¸ºè¶…çº§èŠ‚ç‚¹...\033[0m"
 clgst system regproducer bp1 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz
 
-echo -e "\033[35m ½«bp2×¢²áÎª³¬¼¶½Úµã...\033[0m"
+echo -e "\033[35m å°†bp2æ³¨å†Œä¸ºè¶…çº§èŠ‚ç‚¹...\033[0m"
 clgst system regproducer bp2 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz
 
-echo -e "\033[35m ½«bp3×¢²áÎª³¬¼¶½Úµã...\033[0m"
+echo -e "\033[35m å°†bp3æ³¨å†Œä¸ºè¶…çº§èŠ‚ç‚¹...\033[0m"
 clgst system regproducer bp3 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz
 
-echo -e "\033[35m ½«bp4×¢²áÎª³¬¼¶½Úµã...\033[0m"
+echo -e "\033[35m å°†bp4æ³¨å†Œä¸ºè¶…çº§èŠ‚ç‚¹...\033[0m"
 clgst system regproducer bp4 GST8MfTEtHsMU1AGL4LYbYx3eiU9iVK3K6WXUEoJHkieVAbj9gHDz
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
 
@@ -109,70 +105,66 @@ echo "GST currency stats:"
 clgst get currency stats gstio.token GST
 
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
-echo -e "\033[32m gstio×ªÕËµ½Í¶Æ±ÓÃ»§ \033[0m"
+echo -e "\033[32m gstioè½¬è´¦åˆ°æŠ•ç¥¨ç”¨æˆ· \033[0m"
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
 
-
 clgst transfer gstio  gstio.vote "50000000.0000 GST" -p gstio
-
-
-echo -e "\033[32m ½«151000000.0000 GST ´Ógstio×ªÕËµ½voter1...\033[0m"
+echo -e "\033[32m å°†151000000.0000 GST ä»gstioè½¬è´¦åˆ°voter1...\033[0m"
 clgst transfer gstio voter1 "151000000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«120000.0000 GST ´Ógstio×ªÕËµ½voter2...\033[0m"
+echo -e "\033[32m å°†120000.0000 GST ä»gstioè½¬è´¦åˆ°voter2...\033[0m"
 clgst transfer gstio voter2 "151000000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«120000.0000 GST ´Ógstio×ªÕËµ½voter3...\033[0m"
+echo -e "\033[32m å°†120000.0000 GST ä»gstioè½¬è´¦åˆ°voter3...\033[0m"
 clgst transfer gstio voter3 "151000000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«120000.0000 GST ´Ógstio×ªÕËµ½voter4...\033[0m"
+echo -e "\033[32m å°†120000.0000 GST ä»gstioè½¬è´¦åˆ°voter4...\033[0m"
 clgst transfer gstio voter4 "120000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«120000.0000 GST ´Ógstio×ªÕËµ½voter5...\033[0m"
+echo -e "\033[32m å°†120000.0000 GST ä»gstioè½¬è´¦åˆ°voter5...\033[0m"
 clgst transfer gstio voter5 "120000.0000 GST" -p gstio
 
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
 
 clgst transfer gstio dice "1000000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«12000.0000 GST ´Ógstio×ªÕËµ½bp1...\033[0m"
+echo -e "\033[32m å°†12000.0000 GST ä»gstioè½¬è´¦åˆ°bp1...\033[0m"
 clgst transfer gstio bp1 "12000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«12000.0000 GST ´Ógstio×ªÕËµ½bp2...\033[0m"
+echo -e "\033[32m å°†12000.0000 GST ä»gstioè½¬è´¦åˆ°bp2...\033[0m"
 clgst transfer gstio bp2 "12000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«12000.0000 GST ´Ógstio×ªÕËµ½bp3...\033[0m"
+echo -e "\033[32m å°†12000.0000 GST ä»gstioè½¬è´¦åˆ°bp3...\033[0m"
 clgst transfer gstio bp3 "12000.0000 GST" -p gstio
 
-echo -e "\033[32m ½«12000.0000 GST ´Ógstio×ªÕËµ½bp4...\033[0m"
+echo -e "\033[32m å°†12000.0000 GST ä»gstioè½¬è´¦åˆ°bp4...\033[0m"
 clgst transfer gstio bp4 "12000.0000 GST" -p gstio
 
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
 
-
-#clgst system delegatebw bp1 bp1 "12000.0000 GST" 
-
-echo -e "\033[32m voter1 µÖÑº 150000000.0000 GST for cpu, 0 GST for net...\033[0m"
+echo -e "\033[32m voter1 æŠµæŠ¼ 150000000.0000 GST for cpu, 0 GST for net...\033[0m"
 clgst system delegatebw voter1 voter1 "150000000.0000 GST" 
 
-echo -e "\033[32m voter2 µÖÑº 150000000.0000 GST for cpu, 10000.0000 GST for net...\033[0m"
+echo -e "\033[32m voter2 æŠµæŠ¼ 150000000.0000 GST for cpu, 10000.0000 GST for net...\033[0m"
 clgst system delegatebw voter2 voter2 "60000000.0000 GST" 
 
-echo -e "\033[32m voter3 µÖÑº 90000.0000 GST for cpu, 10000.0000 GST for net...\033[0m"
+echo -e "\033[32m voter3 æŠµæŠ¼ 90000.0000 GST for cpu, 10000.0000 GST for net...\033[0m"
 clgst system delegatebw voter3 voter3 "60000000.0000 GST" 
 
-echo -e "\033[32m voter4 µÖÑº 90000.0000 GST for cpu, 10000.0000 GST for net...\033[0m"
+echo -e "\033[32m voter4 æŠµæŠ¼ 90000.0000 GST for cpu, 10000.0000 GST for net...\033[0m"
 clgst system delegatebw voter4 voter4 "10000.0000 GST" 
 
-echo -e "\033[32m voter5 µÖÑº 1.0000 GST for cpu, 0.0000 GST for net...\033[0m"
+echo -e "\033[32m voter5 æŠµæŠ¼ 1.0000 GST for cpu, 0.0000 GST for net...\033[0m"
 clgst system delegatebw voter5 voter5 "120000.0000 GST" 
 
 echo -e "\033[31m----------------------------------------------------------------------\033[0m"
 
-#echo -e "\033[32m voter1 Í¶Æ±Ñ¡¾Ù½Úµã bp1...\033[0m"
-#clgst system voteproducer prods voter1  bp1
-#clgst system voteproducer prods voter2  bp2 
-#clgst system listproducers  
+echo -e "\033[32m voter1 æŠ•ç¥¨é€‰ä¸¾èŠ‚ç‚¹ bp1...\033[0m"
+clgst system voteproducer prods voter1  bp1
+clgst system voteproducer prods voter2  bp2 
+
+echo -e "\033[32m æŸ¥çœ‹æŠ•ç¥¨ä¿¡æ¯...\033[0m"
+clgst system listproducers  
 
 echo "account voter1 info:"
 clgst get account voter1
@@ -183,10 +175,10 @@ clgst get account voter2
 echo "account bp1 info:"
 clgst get account bp1
 
-echo -e "\033[35m µÈ´ıÇø¿éĞÅÏ¢¸üĞÂ 2s...\033[0m"
+echo -e "\033[35m ç­‰å¾…åŒºå—ä¿¡æ¯æ›´æ–° 2s...\033[0m"
 sleep 2s
 
-echo "µ±Ç°Çø¿éĞÅÏ¢..."
+echo "å½“å‰åŒºå—ä¿¡æ¯..."
 clgst get info
 
 
