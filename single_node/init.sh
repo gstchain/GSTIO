@@ -12,10 +12,7 @@ clgst wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79z
 
 sleep 3s
 
-
-
 STALE_NOD=$(netstat -ln|grep -o 8888)
-
 
 echo -e "\033[32m create account...\033[0m"
 
