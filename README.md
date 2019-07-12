@@ -1,4 +1,4 @@
-# gst
+# GST
 
 本篇文档教程环境：  centos    
 1.	拉取源码 源码地址： https://github.com/gsthot/gst.git 
@@ -51,10 +51,10 @@ clgst wallet import --private-key 导入私钥
 clgst system newaccount createor new_account ownerpublic_key activepublic_key
 
 转账
-clgst transfer A  B  "0.0001 GST" -p A
+clgst transfer usera  userb  "0.0001 GST" -p usera
 
 抵押
-clgst system delegatebw A A "1.0000 GST" 
+clgst system delegatebw usera  usera "1.0000 GST" 
 
 投票
 clgst system voteproducer prods voter1  bp1
