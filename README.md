@@ -1,6 +1,6 @@
 # GST
 
-本篇文档教程环境：  centos    
+本篇文档教程环境：  centos 7   
 1.	拉取源码 源码地址： https://github.com/gsthot/gst.git 
 
 安装 yum install gcc-c++
