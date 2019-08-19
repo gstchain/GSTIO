@@ -60,7 +60,7 @@ namespace gstio {
 		if (to != st.issuer) {
 			//SEND_INLINE_ACTION(*this, transfer, { st.issuer,N(active) }, { st.issuer, to, quantity, memo });
 			sub_balance( st.issuer, quantity );
-	       add_balance( to, quantity, st.issuer);
+	        add_balance( to, quantity, st.issuer);
 		}
 	}
 
@@ -90,21 +90,11 @@ namespace gstio {
 		add_balance(to, quantity, from);
 
 		//string con ="gstio.stake";
-		if (to != N(gstio.stake) && from != N(gstio.stake) && from != N(gstio) \
-			&& from != N(gstio.vpay) && from != N(gstio.bpay) && from != N(gstio.vote) && from!=N(gstio.mine) )
+		if (to != N(gstio.stake) && from != N(gstio.stake) && from != N(gstio) && from != N(gstio.vpay) && \
+			from != N(gstio.bpay) && from != N(gstio.vote) && from!=N(gstio.mine) && from !=N(gstio.fee))
 		{
-			auto fee = quantity;
-
-			if (fee.amount <= 1000)
-			{
-				auto minfee = asset(1);
-				sub_balance(from, minfee);
-				add_balance(N(gstio.fee), minfee, from);
-			}
-			else {
-				sub_balance(from, quantity / 1000);
-				add_balance(N(gstio.fee), quantity / 1000, from);
-			}
+			sub_balance(from, asset(100));
+			add_balance(N(gstio.fee), asset(100), from);
 		}
 	}
 
