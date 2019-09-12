@@ -11,9 +11,9 @@
 >./gstio_install.sh
  
 **3、单主机节点启动** 
-> cd ../single_node
->./start.sh  (启动链,可自行更改配置文件)
->./init.sh  (创建相关系统账户,部署系统合约)
+> cd ../single_node  
+>./start.sh  (启动链,可自行更改配置文件)  
+>./init.sh  (创建相关系统账户,部署系统合约)  
 
 
 
