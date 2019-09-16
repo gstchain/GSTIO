@@ -336,7 +336,6 @@ private-key =["your public key", "your private key"]
 #    KEY:<data>      	is a string form of a valid GSTIO private key which maps to the provided public key
 # 
 #    KGSTD:<data>    	is the URL where kgstd is available and the approptiate wallet(s) are unlocked (gstio::producer_plugin)
-#signature-provider = GST89s4c1sSYFvrRMePbWs8wrq1bNRXUdLkTgwqEc6CVFTYYLnWzX=KEY:5KarHtfxsJY9Ei8kmZpFo5GeA3rEWmC6Qe9UubkKfvLchE5MbtE
 signature-provider = your public key=KEY:your private key
 
 # Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kgstd provider for signing (gstio::producer_plugin)
