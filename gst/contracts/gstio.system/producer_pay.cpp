@@ -227,56 +227,6 @@ using namespace gstio;
 void system_contract::prodrewards(const account_name &owner)
 {
 	require_auth(owner);
-
-	const auto &prod = _producers.get(owner);
-	gstio_assert(prod.active(), "producer does not have an active key");
-
-	gstio_assert(_gstate.total_activated_stake >= min_activated_stake,
-				 "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)");
-
-	auto ct = current_time();
-
-	gstio_assert(ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day");
-
-	const asset token_supply = token(N(gstio.token)).get_supply(symbol_type(system_token_symbol).name());
-	const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
-
-	int64_t to_per_block_pay = 0;
-	int64_t to_per_vote_pay = 0;
-	if (usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0)
-	{
-		auto new_tokens = static_cast<int64_t>((continuous_rate * double(token_supply.amount) * double(usecs_since_last_fill)) / double(useconds_per_year));
-
-		auto to_producers = new_tokens / 5;				   //用于给超级节点的奖励，总增发量的1/5
-		to_per_block_pay = to_producers / 4;			   //用于出块的奖励，给超级节点奖励的1/4
-		to_per_vote_pay = to_producers - to_per_block_pay; //用于得票奖励，给超级节点奖励的3/4
-
-		to_per_vote_pay += _gstate.pervote_bucket;   //更新可用于得票奖励的总token量
-		to_per_block_pay += _gstate.perblock_bucket; //更新可用于出块奖励的总token量
-	}
-
-	int64_t producer_per_block_pay = 0;
-	if (_gstate.total_unpaid_blocks > 0)
-	{
-		producer_per_block_pay = (to_per_block_pay * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
-	}
-	int64_t producer_per_vote_pay = 0;
-	if (_gstate.total_producer_vote_weight > 0)
-	{
-		producer_per_vote_pay = int64_t((to_per_vote_pay * prod.total_votes) / _gstate.total_producer_vote_weight);
-	}
-	if (producer_per_vote_pay < min_pervote_daily_pay)
-	{
-		producer_per_vote_pay = 0;
-	}
-
-	int64_t prodpay = producer_per_block_pay + producer_per_vote_pay;
-	user_resources_table totals_tbl(_self, owner);
-	auto tot_itr = totals_tbl.find(owner);
-
-	totals_tbl.modify(tot_itr, 0, [&](auto &tot) {
-		tot.prodreward = asset(prodpay);
-	});
 }
 //2019/03/12 以上
 
