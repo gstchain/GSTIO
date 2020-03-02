@@ -3,8 +3,8 @@
 ### Ubuntu 搭建 GST 环境
 
 **1、下载 GST 代码**  
->源码地址： https://github.com/gsthot/gst.git  
->git clone https://github.com/gsthot/gst.git  
+>源码地址： https://github.com/gstchain/gst.git  
+>git clone https://github.com/gstchain/gst.git  
 
 **2、编译 & 安装**  
 >cd gst  
