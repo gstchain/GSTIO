@@ -321,11 +321,6 @@ namespace gstio {
 				size_t			 size = 10;
 			};
 
-			struct get_table_scopes_rows_result_scope {
-				name                scope;
-				string				symbol;
-				vector<fc::variant> rows;
-			};
 
 			struct get_table_scopes_rows_result {
 				vector<get_table_scopes_rows_result_scope>  scopes;
