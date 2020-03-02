@@ -8676,6 +8676,7 @@ const const_char_ptr word_list[] = {
 "claggy",
 "claim",
 "claimer",
+"claimver"
 "clairce",
 "claith",
 "claiver",

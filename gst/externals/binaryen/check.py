@@ -311,6 +311,19 @@ for t in os.listdir(os.path.join('test', 'ctor-eval')):
     with open(out) as f:
       fail_if_not_identical(f.read(), actual)
 
+for t in sorted(os.listdir(os.path.join(options.binaryen_test, 'print'))):
+  if False:
+    print '..', t
+    wasm = os.path.basename(t).replace('.wast', '')
+    cmd = WASM_OPT + [os.path.join(options.binaryen_test, 'print', t), '--print']
+    print '    ', ' '.join(cmd)
+    actual, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    fail_if_not_identical(actual, open(os.path.join(options.binaryen_test, 'print', wasm + '.txt')).read())
+    cmd = WASM_OPT + [os.path.join(options.binaryen_test, 'print', t), '--print-minified']
+    print '    ', ' '.join(cmd)
+    actual, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    fail_if_not_identical(actual.strip(), open(os.path.join(options.binaryen_test, 'print', wasm + '.minified.txt')).read().strip())
+
 print '\n[ checking wasm-shell spec testcases... ]\n'
 
 if len(requested) == 0:
