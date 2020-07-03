@@ -4,6 +4,7 @@ from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import Node
+from Node import ReturnType
 from TestHelper import TestHelper
 
 import decimal
@@ -42,14 +43,14 @@ walletPort=args.wallet_port
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
-cluster=Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+cluster=Cluster(host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
-killGstInstances=not dontKill
+killEosInstances=not dontKill
 killWallet=not dontKill
 dontBootstrap=sanityTest # intent is to limit the scope of the sanity test to just verifying that nodes can be started
 
-WalletdName=Utils.GstWalletName
+WalletdName=Utils.EosWalletName
 ClientName="clgst"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
@@ -73,7 +74,7 @@ try:
     else:
         Print("Collecting cluster info.")
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
-        killGstInstances=False
+        killEosInstances=False
         Print("Stand up %s" % (WalletdName))
         walletMgr.killall(allInstances=killAll)
         walletMgr.cleanup()
@@ -227,7 +228,7 @@ try:
 
     expectedAmount=transferAmount
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountGstBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -239,7 +240,7 @@ try:
 
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountGstBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -266,7 +267,7 @@ try:
 
     expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountGstBalanceStr(currencyAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(currencyAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -320,7 +321,7 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
-    contractDir="contracts/gstio.token"
+    contractDir="unittests/contracts/gstio.token"
     wasmFile="gstio.token.wasm"
     abiFile="gstio.token.abi"
     Print("Publish contract")
@@ -340,11 +341,11 @@ try:
             errorExit("FAILURE - get code currency1111 failed", raw=True)
     else:
         Print("verify abi is set")
-        account=node.getGstAccountFromDb(currencyAccount.name)
+        account=node.getEosAccountFromDb(currencyAccount.name)
         abiName=account["abi"]["structs"][0]["name"]
         abiActionName=account["abi"]["actions"][0]["name"]
         abiType=account["abi"]["actions"][0]["type"]
-        if abiName != "transfer" or abiActionName != "transfer" or abiType != "transfer":
+        if abiName != "account" or abiActionName != "close" or abiType != "close":
             errorExit("FAILURE - get GST account failed", raw=True)
 
     Print("push create action to currency1111 contract")
@@ -637,13 +638,19 @@ try:
         errorExit("Failed to unlock wallet %s" % (defproduceraWallet.name))
 
     Print("Get account defproducera")
-    account=node.getGstAccount(defproduceraAccount.name, exitOnError=True)
+    account=node.getEosAccount(defproduceraAccount.name, exitOnError=True)
 
     Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.unlockWallet(testWallet):
         cmdError("%s wallet unlock test" % (ClientName))
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
+    if not enableMongo:
+        Print("Verify non-JSON call works")
+        rawAccount=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
+        coreLiquidBalance=account['core_liquid_balance']
+        match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), rawAccount, re.MULTILINE | re.DOTALL)
+        assert match is not None, "did not find the core liquid balance (\"liquid:\") of %d in \"%s\"" % (coreLiquidBalance, rawAccount)
 
     Print("Get head block num.")
     currentBlockNum=node.getHeadBlockNum()
@@ -662,6 +669,7 @@ try:
                 errorExit("mongo get block by id %s" % blockId)
 
     Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
+    currentBlockNum=node.getHeadBlockNum() # If the tests take too long, we could be far beyond currentBlockNum+1000 and that'll cause a block to be found.
     block=node.getBlock(currentBlockNum+1000, silentErrors=True)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
@@ -689,6 +697,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killGstInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

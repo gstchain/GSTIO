@@ -1,0 +1,52 @@
+/**
+ *  @file
+ *  @copyright defined in gst/LICENSE.txt
+ */
+#pragma once
+
+#include <gstio/testing/tester.hpp>
+
+#define CORE_SYM_NAME "${CORE_SYMBOL_NAME}"
+#define CORE_SYM_PRECISION 4
+
+#define _STRINGIZE1(x) #x
+#define _STRINGIZE2(x) _STRINGIZE1(x)
+
+#define CORE_SYM_STR ( _STRINGIZE2(CORE_SYM_PRECISION) "," CORE_SYM_NAME )
+#define CORE_SYM  ( ::gstio::chain::string_to_symbol_c( CORE_SYM_PRECISION, CORE_SYM_NAME ) )
+
+struct core_sym {
+   static inline gstio::chain::asset from_string(const std::string& s) {
+      return gstio::chain::asset::from_string(s + " " CORE_SYM_NAME);
+   }
+};
+
+// CN -> contract C++ name, C -> contract name, D -> top level directory
+#define MAKE_READ_WASM_ABI(CN,C, D) \
+   static std::vector<uint8_t> CN ## _wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".wasm"); } \
+   static std::vector<char> CN ## _abi() { return read_abi("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".abi"); }
+
+namespace gstio {
+   namespace testing {
+      struct contracts {
+         // Contracts in `gst/unittests/contracts' directory
+         MAKE_READ_WASM_ABI(gstio_bios,   gstio.bios, contracts)
+         MAKE_READ_WASM_ABI(gstio_msig,   gstio.msig, contracts)
+         MAKE_READ_WASM_ABI(gstio_system, gstio.system, contracts)
+         MAKE_READ_WASM_ABI(gstio_token,  gstio.token,  contracts)
+         MAKE_READ_WASM_ABI(gstio_wrap,   gstio.wrap,   contracts)
+
+         // Contracts in `gst/unittests/unittests/test-contracts' directory
+         MAKE_READ_WASM_ABI(asserter,             asserter,             test-contracts)
+         MAKE_READ_WASM_ABI(deferred_test,        deferred_test,        test-contracts)
+         MAKE_READ_WASM_ABI(noop,                 noop,                 test-contracts)
+         MAKE_READ_WASM_ABI(payloadless,          payloadless,          test-contracts)
+         MAKE_READ_WASM_ABI(proxy,                proxy,                test-contracts)
+         MAKE_READ_WASM_ABI(snapshot_test,        snapshot_test,        test-contracts)
+         MAKE_READ_WASM_ABI(test_api,             test_api,             test-contracts)
+         MAKE_READ_WASM_ABI(test_api_db,          test_api_db,          test-contracts)
+         MAKE_READ_WASM_ABI(test_api_multi_index, test_api_multi_index, test-contracts)
+         MAKE_READ_WASM_ABI(test_ram_limit,       test_ram_limit,       test-contracts)
+      };
+   } /// gstio::testing
+}  /// gstio

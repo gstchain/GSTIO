@@ -36,7 +36,7 @@ debug=args.v
 total_nodes = pnodes
 killCount=args.kill_count if args.kill_count > 0 else 1
 killSignal=args.kill_sig
-killGstInstances= not args.leave_running
+killEosInstances= not args.leave_running
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 killAll=args.clean_run
@@ -100,8 +100,8 @@ try:
         errorExit("Cluster sync wait failed.")
 
     Print("Kill %d cluster node instances." % (killCount))
-    if cluster.killSomeGstInstances(killCount, killSignal) is False:
-        errorExit("Failed to kill Gst instances")
+    if cluster.killSomeEosInstances(killCount, killSignal) is False:
+        errorExit("Failed to kill Eos instances")
     Print("nodgst instances killed.")
 
     Print("Spread funds and validate")
@@ -113,8 +113,8 @@ try:
         errorExit("Cluster sync wait failed.")
 
     Print ("Relaunch dead cluster nodes instances.")
-    if cluster.relaunchGstInstances() is False:
-        errorExit("Failed to relaunch Gst instances")
+    if cluster.relaunchEosInstances(cachePopen=True) is False:
+        errorExit("Failed to relaunch Eos instances")
     Print("nodgst instances relaunched.")
 
     Print ("Resyncing cluster nodes.")
@@ -130,8 +130,16 @@ try:
     if not cluster.waitOnClusterSync():
         errorExit("Cluster sync wait failed.")
 
+    if killEosInstances:
+        atLeastOne=False
+        for node in cluster.getNodes():
+            if node.popenProc is not None:
+                atLeastOne=True
+                node.interruptAndVerifyExitStatus()
+        assert atLeastOne, "Test is setup to verify that a cleanly interrupted nodgst exits with an exit status of 0, but this test may no longer be setup to do that"
+
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killGstInstances, killGstInstances, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killEosInstances, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
 
 exit(0)

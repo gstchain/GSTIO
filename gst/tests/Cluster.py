@@ -32,7 +32,6 @@ class Cluster(object):
     __bootlog="gstio-ignition-wd/bootlog.txt"
     __configDir="etc/gstio/"
     __dataDir="var/lib/"
-    __fileDivider="================================================================="
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is kgstd running. If not load the wallet plugin
@@ -120,11 +119,14 @@ class Cluster(object):
         assert(isinstance(topo, str))
 
         if not self.localCluster:
-            Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.GstServerName))
+            Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
             return True
 
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
+
+        if pnodes > totalNodes:
+            raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d)." % (totalNodes, pnodes))
 
         if self.walletMgr is None:
             self.walletMgr=WalletMgr(True)
@@ -143,7 +145,7 @@ class Cluster(object):
             time.sleep(2)
 
         cmd="%s -p %s -n %s -d %s -i %s -f --p2p-plugin %s %s" % (
-            Utils.GstLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
+            Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
             p2pPlugin, producerFlag)
         cmdArr=cmd.split()
         if self.staging:
@@ -313,7 +315,7 @@ class Cluster(object):
         nodes=self.discoverLocalNodes(totalNodes, timeout=Utils.systemWaitTimeout)
         if nodes is None or totalNodes != len(nodes):
             Utils.Print("ERROR: Unable to validate %s instances, expected: %d, actual: %d" %
-                          (Utils.GstServerName, totalNodes, len(nodes)))
+                          (Utils.EosServerName, totalNodes, len(nodes)))
             return False
 
         self.nodes=nodes
@@ -470,7 +472,7 @@ class Cluster(object):
         """Returns client version (string)"""
         p = re.compile(r'^Build version:\s(\w+)\n$')
         try:
-            cmd="%s version client" % (Utils.GstClientPath)
+            cmd="%s version client" % (Utils.EosClientPath)
             if verbose: Utils.Print("cmd: %s" % (cmd))
             response=Utils.checkOutput(cmd.split())
             assert(response)
@@ -494,7 +496,7 @@ class Cluster(object):
         p = re.compile('Private key: (.+)\nPublic key: (.+)\n', re.MULTILINE)
         for _ in range(0, count):
             try:
-                cmd="%s create key --to-console" % (Utils.GstClientPath)
+                cmd="%s create key --to-console" % (Utils.EosClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=Utils.checkOutput(cmd.split())
                 m=p.search(keyStr)
@@ -505,7 +507,7 @@ class Cluster(object):
                 ownerPrivate=m.group(1)
                 ownerPublic=m.group(2)
 
-                cmd="%s create key --to-console" % (Utils.GstClientPath)
+                cmd="%s create key --to-console" % (Utils.EosClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=Utils.checkOutput(cmd.split())
                 m=p.match(keyStr)
@@ -607,15 +609,15 @@ class Cluster(object):
 
         if Utils.Debug: Utils.Print("Funds transfered on transaction id %s." % (transId))
 
-        nextGstIdx=-1
+        nextEosIdx=-1
         for i in range(0, count):
             account=accounts[i]
             nextInstanceFound=False
             for _ in range(0, count):
-                #Utils.Print("nextGstIdx: %d, n: %d" % (nextGstIdx, n))
-                nextGstIdx=(nextGstIdx + 1)%count
-                if not self.nodes[nextGstIdx].killed:
-                    #Utils.Print("nextGstIdx: %d" % (nextGstIdx))
+                #Utils.Print("nextEosIdx: %d, n: %d" % (nextEosIdx, n))
+                nextEosIdx=(nextEosIdx + 1)%count
+                if not self.nodes[nextEosIdx].killed:
+                    #Utils.Print("nextEosIdx: %d" % (nextEosIdx))
                     nextInstanceFound=True
                     break
 
@@ -623,8 +625,8 @@ class Cluster(object):
                 Utils.Print("ERROR: No active nodes found.")
                 return False
 
-            #Utils.Print("nextGstIdx: %d, count: %d" % (nextGstIdx, count))
-            node=self.nodes[nextGstIdx]
+            #Utils.Print("nextEosIdx: %d, count: %d" % (nextEosIdx, count))
+            node=self.nodes[nextEosIdx]
             if Utils.Debug: Utils.Print("Wait for transaction id %s on node port %d" % (transId, node.port))
             if node.waitForTransInBlock(transId) is False:
                 Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
@@ -670,7 +672,7 @@ class Cluster(object):
                 continue
 
             if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
-                                        (Utils.GstServerName, node.port))
+                                        (Utils.EosServerName, node.port))
 
             if node.validateFunds(initialBalances, transferAmount, source, accounts) is False:
                 Utils.Print("ERROR: Failed to validate funds on gst node port: %d" % (node.port))
@@ -683,7 +685,7 @@ class Cluster(object):
         receiving transferAmount*n SYS and forwarding x-transferAmount funds. Transfer actions are spread round-robin across the cluster to vaidate system cohesiveness."""
 
         if Utils.Debug: Utils.Print("Get initial system balances.")
-        initialBalances=self.nodes[0].getGstBalances([self.defproduceraAccount] + self.accounts)
+        initialBalances=self.nodes[0].getEosBalances([self.defproduceraAccount] + self.accounts)
         assert(initialBalances)
         assert(isinstance(initialBalances, dict))
 
@@ -893,7 +895,7 @@ class Cluster(object):
         contract="gstio.token"
         action="transfer"
         for name, keys in producerKeys.items():
-            data="{\"from\":\"gstio\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init transfer")
+            data="{\"from\":\"gstio\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init gstio transfer")
             opts="--permission gstio@active"
             if name != "gstio":
                 trans=biosNode.pushMessage(contract, action, data, opts)
@@ -958,7 +960,7 @@ class Cluster(object):
             return None
 
         contract="gstio.bios"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1082,7 +1084,7 @@ class Cluster(object):
             return None
 
         contract="gstio.token"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1130,14 +1132,14 @@ class Cluster(object):
 
         expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Verify gstio issue, Expected: %s" % (expectedAmount))
-        actualAmount=biosNode.getAccountGstBalanceStr(gstioAccount.name)
+        actualAmount=biosNode.getAccountEosBalanceStr(gstioAccount.name)
         if expectedAmount != actualAmount:
             Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
                         (expectedAmount, actualAmount))
             return None
 
         contract="gstio.system"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1168,14 +1170,17 @@ class Cluster(object):
         if not biosNode.waitForTransInBlock(transId):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
-
+        action="init"
+        data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
+        opts="--permission %s@active" % (gstioAccount.name)
+        trans=biosNode.pushMessage(gstioAccount.name, action, data, opts)
         Utils.Print("Cluster bootstrap done.")
 
         return biosNode
 
     @staticmethod
-    def pgrepGstServers(timeout=None):
-        cmd=Utils.pgrepCmd(Utils.GstServerName)
+    def pgrepEosServers(timeout=None):
+        cmd=Utils.pgrepCmd(Utils.EosServerName)
 
         def myFunc():
             psOut=None
@@ -1192,15 +1197,15 @@ class Cluster(object):
         return Utils.waitForObj(myFunc, timeout)
 
     @staticmethod
-    def pgrepGstServerPattern(nodeInstance):
+    def pgrepEosServerPattern(nodeInstance):
         dataLocation=Cluster.__dataDir + Cluster.nodeExtensionToName(nodeInstance)
         return r"[\n]?(\d+) (.* --data-dir %s .*)\n" % (dataLocation)
 
-    # Populates list of GstInstanceInfo objects, matched to actual running instances
+    # Populates list of EosInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes, timeout=None):
         nodes=[]
 
-        psOut=Cluster.pgrepGstServers(timeout)
+        psOut=Cluster.pgrepEosServers(timeout)
         if psOut is None:
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
@@ -1211,10 +1216,10 @@ class Cluster(object):
             psOutDisplay=psOut[:6660]+"..."
         if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOutDisplay)
         for i in range(0, totalNodes):
-            pattern=Cluster.pgrepGstServerPattern(i)
+            pattern=Cluster.pgrepEosServerPattern(i)
             m=re.search(pattern, psOut, re.MULTILINE)
             if m is None:
-                Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.GstServerName, pattern))
+                Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
                 break
             instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
             if Utils.Debug: Utils.Print("Node>", instance)
@@ -1224,21 +1229,21 @@ class Cluster(object):
         return nodes
 
     def discoverBiosNodePid(self, timeout=None):
-        psOut=Cluster.pgrepGstServers(timeout=timeout)
-        pattern=Cluster.pgrepGstServerPattern("bios")
+        psOut=Cluster.pgrepEosServers(timeout=timeout)
+        pattern=Cluster.pgrepEosServerPattern("bios")
         Utils.Print("pattern={\n%s\n}, psOut=\n%s\n" % (pattern,psOut))
         m=re.search(pattern, psOut, re.MULTILINE)
         if m is None:
-            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.GstServerName, pattern))
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
         else:
             self.biosNode.pid=int(m.group(1))
 
-    # Kills a percentange of Gst instances starting from the tail and update gstInstanceInfos state
-    def killSomeGstInstances(self, killCount, killSignalStr=Utils.SigKillTag):
+    # Kills a percentange of Eos instances starting from the tail and update gstInstanceInfos state
+    def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
-        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.GstServerName, killSignal))
+        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.EosServerName, killSignal))
 
         killedCount=0
         for node in reversed(self.nodes):
@@ -1252,21 +1257,21 @@ class Cluster(object):
         time.sleep(1) # Give processes time to stand down
         return True
 
-    def relaunchGstInstances(self):
+    def relaunchEosInstances(self, cachePopen=False):
 
         chainArg=self.__chainSyncStrategy.arg
 
         newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if node.killed and not node.relaunch(i, chainArg, newChain=newChain):
+            if node.killed and not node.relaunch(i, chainArg, newChain=newChain, cachePopen=cachePopen):
                 return False
 
         return True
 
     @staticmethod
     def dumpErrorDetailImpl(fileName):
-        Utils.Print(Cluster.__fileDivider)
+        Utils.Print(Utils.FileDivider)
         Utils.Print("Contents of %s:" % (fileName))
         if os.path.exists(fileName):
             with open(fileName, "r") as f:
@@ -1274,34 +1279,50 @@ class Cluster(object):
         else:
             Utils.Print("File %s not found." % (fileName))
 
+    @staticmethod
+    def __findFiles(path):
+        files=[]
+        it=os.scandir(path)
+        for entry in it:
+            if entry.is_file(follow_symlinks=False):
+                match=re.match("stderr\..+\.txt", entry.name)
+                if match:
+                    files.append(os.path.join(path, entry.name))
+        files.sort()
+        return files
+
     def dumpErrorDetails(self):
-        fileName=Cluster.__configDir + Cluster.nodeExtensionToName("bios") + "/config.ini"
+        fileName=os.path.join(Cluster.__configDir + Cluster.nodeExtensionToName("bios"), "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
-        fileName=Cluster.__dataDir + Cluster.nodeExtensionToName("bios") + "/stderr.txt"
-        Cluster.dumpErrorDetailImpl(fileName)
+        path=Cluster.__dataDir + Cluster.nodeExtensionToName("bios")
+        fileNames=Cluster.__findFiles(path)
+        for fileName in fileNames:
+            Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i) + "/"
-            fileName=configLocation + "config.ini"
+            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i)
+            fileName=os.path.join(configLocation, "config.ini")
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName=configLocation + "genesis.json"
+            fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/stderr.txt"
-            Cluster.dumpErrorDetailImpl(fileName)
+            path=Cluster.__dataDir + Cluster.nodeExtensionToName(i)
+            fileNames=Cluster.__findFiles(path)
+            for fileName in fileNames:
+                Cluster.dumpErrorDetailImpl(fileName)
 
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
     def killall(self, silent=True, allInstances=False):
         """Kill cluster nodgst instances. allInstances will kill all nodgst instances running on the system."""
-        cmd="%s -k 9" % (Utils.GstLauncherPath)
+        cmd="%s -k 9" % (Utils.EosLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down gst cluster.")
 
         if allInstances:
             # ocassionally the launcher cannot kill the gst server
-            cmd="pkill -9 %s" % (Utils.GstServerName)
+            cmd="pkill -9 %s" % (Utils.EosServerName)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
                 if not silent: Utils.Print("Failed to shut down gst cluster.")
@@ -1438,8 +1459,8 @@ class Cluster(object):
 
     def printBlockLog(self):
         blockLogBios=self.getBlockLog("bios")
-        Utils.Print(Cluster.__fileDivider)
-        Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLogBios, indent=1)))
+        Utils.Print(Utils.FileDivider)
+        Utils.Print("Block log from %s:\n%s" % ("bios", json.dumps(blockLogBios, indent=1)))
 
         if not hasattr(self, "nodes"):
             return
@@ -1448,8 +1469,8 @@ class Cluster(object):
         for i in range(numNodes):
             node=self.nodes[i]
             blockLog=self.getBlockLog(i)
-            Utils.Print(Cluster.__fileDivider)
-            Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLog, indent=1)))
+            Utils.Print(Utils.FileDivider)
+            Utils.Print("Block log from node %s:\n%s" % (i, json.dumps(blockLog, indent=1)))
 
 
     def compareBlockLogs(self):
@@ -1525,11 +1546,11 @@ class Cluster(object):
                 if ret is not None:
                     blockLogDir1=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
                     blockLogDir2=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir1, json.dumps(commonBlockLogs[0], indent=1)))
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir2, json.dumps(commonBlockLogs[i], indent=1)))
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.errorExit("Block logs do not match, difference description -> %s" % (ret))
 
             return True

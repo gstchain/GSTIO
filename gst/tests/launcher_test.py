@@ -35,10 +35,10 @@ Utils.Debug=debug
 cluster=Cluster(walletd=True, defproduceraPrvtKey=defproduceraPrvtKey)
 walletMgr=WalletMgr(True)
 testSuccessful=False
-killGstInstances=not dontKill
+killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName=Utils.GstWalletName
+WalletdName=Utils.EosWalletName
 ClientName="clgst"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
@@ -52,14 +52,15 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(pnodes=4, p2pPlugin=p2pPlugin) is False:
+        pnodes=4
+        if cluster.launch(pnodes=pnodes, totalNodes=pnodes, p2pPlugin=p2pPlugin) is False:
             cmdError("launcher")
             errorExit("Failed to stand up gst cluster.")
     else:
         walletMgr.killall(allInstances=killAll)
         walletMgr.cleanup()
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey)
-        killGstInstances=False
+        killEosInstances=False
 
         print("Stand up walletd")
         if walletMgr.launch() is False:
@@ -146,7 +147,7 @@ try:
 
     expectedAmount=transferAmount
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountGstBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -158,7 +159,7 @@ try:
 
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountGstBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -175,7 +176,7 @@ try:
 
     expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountGstBalanceStr(currencyAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(currencyAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -243,6 +244,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killGstInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

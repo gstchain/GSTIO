@@ -59,10 +59,7 @@ def getOutput(args):
     return proc.communicate()[0].decode('utf-8')
 
 def getJsonOutput(args):
-    print('bios-boot-tutorial.py:', args)
-    logFile.write(args + '\n')
-    proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
-    return json.loads(proc.communicate()[0])
+    return json.loads(getOutput(args))
 
 def sleep(t):
     print('sleep', t, '...')
@@ -187,7 +184,10 @@ def listProducers():
 def vote(b, e):
     for i in range(b, e):
         voter = accounts[i]['name']
-        prods = random.sample(range(firstProducer, firstProducer + numProducers), args.num_producers_vote)
+        k = args.num_producers_vote
+        if k > numProducers:
+            k = numProducers - 1
+        prods = random.sample(range(firstProducer, firstProducer + numProducers), k)
         prods = ' '.join(map(lambda x: accounts[x]['name'], prods))
         retry(args.clgst + 'system voteproducer prods ' + voter + ' ' + prods)
 
@@ -284,17 +284,20 @@ def stepStartBoot():
     startNode(0, {'name': 'gstio', 'pvt': args.private_key, 'pub': args.public_key})
     sleep(1.5)
 def stepInstallSystemContracts():
-    run(args.clgst + 'set contract gstio.token ' + args.contracts_dir + 'gstio.token/')
-    run(args.clgst + 'set contract gstio.msig ' + args.contracts_dir + 'gstio.msig/')
+    run(args.clgst + 'set contract gstio.token ' + args.contracts_dir + '/gstio.token/')
+    run(args.clgst + 'set contract gstio.msig ' + args.contracts_dir + '/gstio.msig/')
 def stepCreateTokens():
     run(args.clgst + 'push action gstio.token create \'["gstio", "10000000000.0000 %s"]\' -p gstio.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
     run(args.clgst + 'push action gstio.token issue \'["gstio", "%s", "memo"]\' -p gstio' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
-    retry(args.clgst + 'set contract gstio ' + args.contracts_dir + 'gstio.system/')
+    retry(args.clgst + 'set contract gstio ' + args.contracts_dir + '/gstio.system/')
     sleep(1)
     run(args.clgst + 'push action gstio setpriv' + jsonArg(['gstio.msig', 1]) + '-p gstio@active')
+def stepInitSystemContract():
+    run(args.clgst + 'push action gstio init' + jsonArg(['0', '4,SYS']) + '-p gstio@active')
+    sleep(1)
 def stepCreateStakedAccounts():
     createStakedAccounts(0, len(accounts))
 def stepRegProducers():
@@ -326,23 +329,24 @@ def stepLog():
 parser = argparse.ArgumentParser()
 
 commands = [
-    ('k', 'kill',           stepKillAll,                True,    "Kill all nodgst and kgstd processes"),
-    ('w', 'wallet',         stepStartWallet,            True,    "Start kgstd, create wallet, fill with keys"),
-    ('b', 'boot',           stepStartBoot,              True,    "Start boot node"),
-    ('s', 'sys',            createSystemAccounts,       True,    "Create system accounts (gstio.*)"),
-    ('c', 'contracts',      stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
-    ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
-    ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
-    ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
-    ('p', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-    ('P', 'start-prod',     stepStartProducers,         True,    "Start producers"),
-    ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
-    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
-    ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
-    ('q', 'resign',         stepResign,                 True,    "Resign gstio"),
-    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
-    ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
-    ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
+    ('k', 'kill',               stepKillAll,                True,    "Kill all nodgst and kgstd processes"),
+    ('w', 'wallet',             stepStartWallet,            True,    "Start kgstd, create wallet, fill with keys"),
+    ('b', 'boot',               stepStartBoot,              True,    "Start boot node"),
+    ('s', 'sys',                createSystemAccounts,       True,    "Create system accounts (gstio.*)"),
+    ('c', 'contracts',          stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
+    ('t', 'tokens',             stepCreateTokens,           True,    "Create tokens"),
+    ('S', 'sys-contract',       stepSetSystemContract,      True,    "Set system contract"),
+    ('I', 'init-sys-contract',  stepInitSystemContract,     True,    "Initialiaze system contract"),
+    ('T', 'stake',              stepCreateStakedAccounts,   True,    "Create staked accounts"),
+    ('p', 'reg-prod',           stepRegProducers,           True,    "Register producers"),
+    ('P', 'start-prod',         stepStartProducers,         True,    "Start producers"),
+    ('v', 'vote',               stepVote,                   True,    "Vote for producers"),
+    ('R', 'claim',              claimRewards,               True,    "Claim rewards"),
+    ('x', 'proxy',              stepProxyVotes,             True,    "Proxy votes"),
+    ('q', 'resign',             stepResign,                 True,    "Resign gstio"),
+    ('m', 'msg-replace',        msigReplaceSystem,          False,   "Replace system contract using msig"),
+    ('X', 'xfer',               stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
+    ('l', 'log',                stepLog,                    True,    "Show tail of node's log"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="GSTIO Public Key", default='GST8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")

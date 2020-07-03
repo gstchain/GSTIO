@@ -1,22 +1,15 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #pragma once
 
-#include <gstio/testing/tester.hpp>
 #include <gstio/chain/abi_serializer.hpp>
-
-#include <gstio.system/gstio.system.wast.hpp>
-#include <gstio.system/gstio.system.abi.hpp>
-
-#include <gstio.token/gstio.token.wast.hpp>
-#include <gstio.token/gstio.token.abi.hpp>
-
-#include <gstio.msig/gstio.msig.wast.hpp>
-#include <gstio.msig/gstio.msig.abi.hpp>
+#include <gstio/testing/tester.hpp>
 
 #include <fc/variant_object.hpp>
+
+#include <contracts.hpp>
 
 using namespace gstio::chain;
 using namespace gstio::testing;
@@ -49,11 +42,10 @@ public:
       create_accounts({ N(gstio.token), N(gstio.ram), N(gstio.ramfee), N(gstio.stake),
                N(gstio.bpay), N(gstio.vpay), N(gstio.saving), N(gstio.names) });
 
-
       produce_blocks( 100 );
 
-      set_code( N(gstio.token), gstio_token_wast );
-      set_abi( N(gstio.token), gstio_token_abi );
+      set_code( N(gstio.token), contracts::gstio_token_wasm() );
+      set_abi( N(gstio.token), contracts::gstio_token_abi().data() );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( N(gstio.token) );
@@ -66,8 +58,13 @@ public:
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "gstio" ) );
 
-      set_code( config::system_account_name, gstio_system_wast );
-      set_abi( config::system_account_name, gstio_system_abi );
+      set_code( config::system_account_name, contracts::gstio_system_wasm() );
+      set_abi( config::system_account_name, contracts::gstio_system_abi().data() );
+
+      base_tester::push_action(config::system_account_name, N(init),
+                            config::system_account_name,  mutable_variant_object()
+                            ("version", 0)
+                            ("core", CORE_SYM_STR));
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
@@ -85,6 +82,15 @@ public:
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("gstio")  + get_balance("gstio.ramfee") + get_balance("gstio.stake") + get_balance("gstio.ram") );
    }
 
+   action_result open( account_name  owner,
+                       const string& symbolname,
+                       account_name  ram_payer    ) {
+      return push_action( ram_payer, N(open), mvo()
+                          ( "owner", owner )
+                          ( "symbol", symbolname )
+                          ( "ram_payer", ram_payer )
+         );
+   }
 
    void create_accounts_with_resources( vector<account_name> accounts, account_name creator = config::system_account_name ) {
       for( auto a : accounts ) {
@@ -417,8 +423,8 @@ public:
                                                ("is_priv", 1)
          );
 
-         set_code( N(gstio.msig), gstio_msig_wast );
-         set_abi( N(gstio.msig), gstio_msig_abi );
+         set_code( N(gstio.msig), contracts::gstio_msig_wasm() );
+         set_abi( N(gstio.msig), contracts::gstio_msig_abi().data() );
 
          produce_blocks();
          const auto& accnt = control->db().get<account_object,by_name>( N(gstio.msig) );
@@ -535,7 +541,6 @@ inline fc::mutable_variant_object voter( account_name acct ) {
       ("proxy", name(0).to_string())
       ("producers", variants() )
       ("staked", int64_t(0))
-      //("last_vote_weight", double(0))
       ("proxied_vote_weight", double(0))
       ("is_proxy", 0)
       ;
