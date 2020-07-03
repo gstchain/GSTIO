@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #pragma once
 #include <appbase/application.hpp>
@@ -44,6 +44,7 @@ class bnet_plugin : public plugin<bnet_plugin> {
       void plugin_initialize(const variables_map& options);
       void plugin_startup();
       void plugin_shutdown();
+      void handle_sighup() override;
 
    private:
       bnet_ptr my;

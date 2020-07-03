@@ -1250,12 +1250,12 @@ Version 1.2
 10/30/02: beazley
           Fixed error messages to use "filename:line: message" instead
           of "filename:line. message".  This makes error reporting more
-          friendly to emacs. Patch submitted by Franï¿½ois Pinard.
+          friendly to emacs. Patch submitted by François Pinard.
 
 10/30/02: beazley
           Improvements to parser.out file.  Terminals and nonterminals
           are sorted instead of being printed in random order.
-          Patch submitted by Franï¿½ois Pinard.
+          Patch submitted by François Pinard.
 
 10/30/02: beazley
           Improvements to parser.out file output.  Rules are now printed
@@ -1317,7 +1317,7 @@ Version 1.1   October 25, 2001
 
 10/25/01: beazley
           Fixed a bug in lex.py that sometimes caused illegal characters to be
-          reported incorrectly.  Reported by Sverre Jï¿½rgensen.
+          reported incorrectly.  Reported by Sverre Jørgensen.
 
 7/8/01  : beazley
           Added a reference to the underlying lexer object when tokens are handled by

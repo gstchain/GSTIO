@@ -46,11 +46,11 @@ add_library( gstio_chain
 #             contracts/chain_initializer.cpp
 
 
-#             transaction_metadata.cpp
+             transaction_metadata.cpp
              ${HEADERS}
              )
 
-target_link_libraries( gstio_chain gst_utilities fc chainbase Logging IR WAST WASM Runtime
+target_link_libraries( gstio_chain fc chainbase Logging IR WAST WASM Runtime
                        softfloat builtins wabt
                      )
 target_include_directories( gstio_chain

@@ -1,10 +1,9 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #include <gstio/faucet_testnet_plugin/faucet_testnet_plugin.hpp>
 #include <gstio/chain_plugin/chain_plugin.hpp>
-#include <gstio/utilities/key_conversion.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>

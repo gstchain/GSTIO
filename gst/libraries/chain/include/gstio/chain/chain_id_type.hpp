@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #pragma once
 
@@ -34,7 +34,7 @@ namespace chain {
         return ds;
       }
 
-      void reflector_verify()const;
+      void reflector_init()const;
 
       private:
          chain_id_type() = default;

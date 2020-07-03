@@ -10,14 +10,12 @@ file(GLOB HEADERS "include/appbase/*.hpp")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BOOST_COMPONENTS)
-list(APPEND BOOST_COMPONENTS thread
-                             date_time
+list(APPEND BOOST_COMPONENTS date_time
                              filesystem
                              system
                              chrono
                              program_options
-                             unit_test_framework
-                             locale)
+                             unit_test_framework)
 
 find_package(Boost 1.60 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
@@ -56,14 +54,14 @@ target_include_directories( appbase
 set_target_properties( appbase PROPERTIES PUBLIC_HEADER "${HEADERS}" )
 
 find_package(Git)
-#if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND GIT_FOUND)
+if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND GIT_FOUND)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/version.cmake @ONLY)
   add_custom_target(appbase_version ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/version.cmake BYPRODUCTS version.cpp)
   add_dependencies(appbase appbase_version)
-#else()
-#  set(VERSION_STRING "Unknown")
-#  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/version.cpp @ONLY ESCAPE_QUOTES)
-#endif()
+else()
+  set(VERSION_STRING "Unknown")
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/version.cpp @ONLY ESCAPE_QUOTES)
+endif()
 
 set(CPACK_PACKAGING_INSTALL_PREFIX /)
 

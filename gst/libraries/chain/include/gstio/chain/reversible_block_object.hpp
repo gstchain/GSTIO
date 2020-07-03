@@ -1,7 +1,7 @@
 
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #pragma once
 #include <gstio/chain/types.hpp>

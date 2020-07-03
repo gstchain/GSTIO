@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #pragma once
 #include <fc/exception/exception.hpp>
@@ -58,7 +58,7 @@ namespace gstio {
          operator uint64_t()const { return value; }
       };
 
-      class symbol {
+      class symbol : fc::reflect_init {
          public:
 
             static constexpr uint8_t max_precision = 18;
@@ -137,7 +137,7 @@ namespace gstio {
                return ds << s.to_string();
             }
 
-            void reflector_verify()const {
+            void reflector_init()const {
                GST_ASSERT( decimals() <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", decimals()) );
                GST_ASSERT( valid_name(name()), symbol_type_exception, "invalid symbol: ${name}", ("name",name()));
             }
