@@ -28,9 +28,9 @@ keepLogs=args.keep_logs
 p2pPlugin=args.p2p_plugin
 
 killWallet=not dontKill
-killEosInstances=not dontKill
+killGstInstances=not dontKill
 if nodesFile is not None:
-    killEosInstances=False
+    killGstInstances=False
 
 Utils.Debug=debug
 testSuccessful=False
@@ -108,6 +108,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killGstInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

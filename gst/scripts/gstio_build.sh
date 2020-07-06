@@ -163,7 +163,7 @@ if [ $# -ne 0 ]; then
    done
 fi
 
-if [ ! -d "${REPO_ROOT}/.git" ]; then
+if [ ! -d "${REPO_ROOT}/../.git" ]; then
    printf "\\nThis build script only works with sources cloned from git\\n"
    printf "Please clone a new gst directory with 'git clone https://github.com/GSTIO/gst --recursive'\\n"
    printf "See the wiki for instructions: https://github.com/GSTIO/gst/wiki\\n"

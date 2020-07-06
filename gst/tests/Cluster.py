@@ -119,7 +119,7 @@ class Cluster(object):
         assert(isinstance(topo, str))
 
         if not self.localCluster:
-            Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
+            Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.GstServerName))
             return True
 
         if len(self.nodes) > 0:
@@ -145,7 +145,7 @@ class Cluster(object):
             time.sleep(2)
 
         cmd="%s -p %s -n %s -d %s -i %s -f --p2p-plugin %s %s" % (
-            Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
+            Utils.GstLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
             p2pPlugin, producerFlag)
         cmdArr=cmd.split()
         if self.staging:
@@ -315,7 +315,7 @@ class Cluster(object):
         nodes=self.discoverLocalNodes(totalNodes, timeout=Utils.systemWaitTimeout)
         if nodes is None or totalNodes != len(nodes):
             Utils.Print("ERROR: Unable to validate %s instances, expected: %d, actual: %d" %
-                          (Utils.EosServerName, totalNodes, len(nodes)))
+                          (Utils.GstServerName, totalNodes, len(nodes)))
             return False
 
         self.nodes=nodes
@@ -472,7 +472,7 @@ class Cluster(object):
         """Returns client version (string)"""
         p = re.compile(r'^Build version:\s(\w+)\n$')
         try:
-            cmd="%s version client" % (Utils.EosClientPath)
+            cmd="%s version client" % (Utils.GstClientPath)
             if verbose: Utils.Print("cmd: %s" % (cmd))
             response=Utils.checkOutput(cmd.split())
             assert(response)
@@ -496,7 +496,7 @@ class Cluster(object):
         p = re.compile('Private key: (.+)\nPublic key: (.+)\n', re.MULTILINE)
         for _ in range(0, count):
             try:
-                cmd="%s create key --to-console" % (Utils.EosClientPath)
+                cmd="%s create key --to-console" % (Utils.GstClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=Utils.checkOutput(cmd.split())
                 m=p.search(keyStr)
@@ -507,7 +507,7 @@ class Cluster(object):
                 ownerPrivate=m.group(1)
                 ownerPublic=m.group(2)
 
-                cmd="%s create key --to-console" % (Utils.EosClientPath)
+                cmd="%s create key --to-console" % (Utils.GstClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=Utils.checkOutput(cmd.split())
                 m=p.match(keyStr)
@@ -609,15 +609,15 @@ class Cluster(object):
 
         if Utils.Debug: Utils.Print("Funds transfered on transaction id %s." % (transId))
 
-        nextEosIdx=-1
+        nextGstIdx=-1
         for i in range(0, count):
             account=accounts[i]
             nextInstanceFound=False
             for _ in range(0, count):
-                #Utils.Print("nextEosIdx: %d, n: %d" % (nextEosIdx, n))
-                nextEosIdx=(nextEosIdx + 1)%count
-                if not self.nodes[nextEosIdx].killed:
-                    #Utils.Print("nextEosIdx: %d" % (nextEosIdx))
+                #Utils.Print("nextGstIdx: %d, n: %d" % (nextGstIdx, n))
+                nextGstIdx=(nextGstIdx + 1)%count
+                if not self.nodes[nextGstIdx].killed:
+                    #Utils.Print("nextGstIdx: %d" % (nextGstIdx))
                     nextInstanceFound=True
                     break
 
@@ -625,8 +625,8 @@ class Cluster(object):
                 Utils.Print("ERROR: No active nodes found.")
                 return False
 
-            #Utils.Print("nextEosIdx: %d, count: %d" % (nextEosIdx, count))
-            node=self.nodes[nextEosIdx]
+            #Utils.Print("nextGstIdx: %d, count: %d" % (nextGstIdx, count))
+            node=self.nodes[nextGstIdx]
             if Utils.Debug: Utils.Print("Wait for transaction id %s on node port %d" % (transId, node.port))
             if node.waitForTransInBlock(transId) is False:
                 Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
@@ -672,7 +672,7 @@ class Cluster(object):
                 continue
 
             if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
-                                        (Utils.EosServerName, node.port))
+                                        (Utils.GstServerName, node.port))
 
             if node.validateFunds(initialBalances, transferAmount, source, accounts) is False:
                 Utils.Print("ERROR: Failed to validate funds on gst node port: %d" % (node.port))
@@ -685,7 +685,7 @@ class Cluster(object):
         receiving transferAmount*n SYS and forwarding x-transferAmount funds. Transfer actions are spread round-robin across the cluster to vaidate system cohesiveness."""
 
         if Utils.Debug: Utils.Print("Get initial system balances.")
-        initialBalances=self.nodes[0].getEosBalances([self.defproduceraAccount] + self.accounts)
+        initialBalances=self.nodes[0].getGstBalances([self.defproduceraAccount] + self.accounts)
         assert(initialBalances)
         assert(isinstance(initialBalances, dict))
 
@@ -1132,7 +1132,7 @@ class Cluster(object):
 
         expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Verify gstio issue, Expected: %s" % (expectedAmount))
-        actualAmount=biosNode.getAccountEosBalanceStr(gstioAccount.name)
+        actualAmount=biosNode.getAccountGstBalanceStr(gstioAccount.name)
         if expectedAmount != actualAmount:
             Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
                         (expectedAmount, actualAmount))
@@ -1179,8 +1179,8 @@ class Cluster(object):
         return biosNode
 
     @staticmethod
-    def pgrepEosServers(timeout=None):
-        cmd=Utils.pgrepCmd(Utils.EosServerName)
+    def pgrepGstServers(timeout=None):
+        cmd=Utils.pgrepCmd(Utils.GstServerName)
 
         def myFunc():
             psOut=None
@@ -1197,15 +1197,15 @@ class Cluster(object):
         return Utils.waitForObj(myFunc, timeout)
 
     @staticmethod
-    def pgrepEosServerPattern(nodeInstance):
+    def pgrepGstServerPattern(nodeInstance):
         dataLocation=Cluster.__dataDir + Cluster.nodeExtensionToName(nodeInstance)
         return r"[\n]?(\d+) (.* --data-dir %s .*)\n" % (dataLocation)
 
-    # Populates list of EosInstanceInfo objects, matched to actual running instances
+    # Populates list of GstInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes, timeout=None):
         nodes=[]
 
-        psOut=Cluster.pgrepEosServers(timeout)
+        psOut=Cluster.pgrepGstServers(timeout)
         if psOut is None:
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
@@ -1216,10 +1216,10 @@ class Cluster(object):
             psOutDisplay=psOut[:6660]+"..."
         if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOutDisplay)
         for i in range(0, totalNodes):
-            pattern=Cluster.pgrepEosServerPattern(i)
+            pattern=Cluster.pgrepGstServerPattern(i)
             m=re.search(pattern, psOut, re.MULTILINE)
             if m is None:
-                Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+                Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.GstServerName, pattern))
                 break
             instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
             if Utils.Debug: Utils.Print("Node>", instance)
@@ -1229,21 +1229,21 @@ class Cluster(object):
         return nodes
 
     def discoverBiosNodePid(self, timeout=None):
-        psOut=Cluster.pgrepEosServers(timeout=timeout)
-        pattern=Cluster.pgrepEosServerPattern("bios")
+        psOut=Cluster.pgrepGstServers(timeout=timeout)
+        pattern=Cluster.pgrepGstServerPattern("bios")
         Utils.Print("pattern={\n%s\n}, psOut=\n%s\n" % (pattern,psOut))
         m=re.search(pattern, psOut, re.MULTILINE)
         if m is None:
-            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.GstServerName, pattern))
         else:
             self.biosNode.pid=int(m.group(1))
 
-    # Kills a percentange of Eos instances starting from the tail and update gstInstanceInfos state
-    def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
+    # Kills a percentange of Gst instances starting from the tail and update gstInstanceInfos state
+    def killSomeGstInstances(self, killCount, killSignalStr=Utils.SigKillTag):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
-        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.EosServerName, killSignal))
+        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.GstServerName, killSignal))
 
         killedCount=0
         for node in reversed(self.nodes):
@@ -1257,7 +1257,7 @@ class Cluster(object):
         time.sleep(1) # Give processes time to stand down
         return True
 
-    def relaunchEosInstances(self, cachePopen=False):
+    def relaunchGstInstances(self, cachePopen=False):
 
         chainArg=self.__chainSyncStrategy.arg
 
@@ -1315,14 +1315,14 @@ class Cluster(object):
 
     def killall(self, silent=True, allInstances=False):
         """Kill cluster nodgst instances. allInstances will kill all nodgst instances running on the system."""
-        cmd="%s -k 9" % (Utils.EosLauncherPath)
+        cmd="%s -k 9" % (Utils.GstLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down gst cluster.")
 
         if allInstances:
             # ocassionally the launcher cannot kill the gst server
-            cmd="pkill -9 %s" % (Utils.EosServerName)
+            cmd="pkill -9 %s" % (Utils.GstServerName)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
                 if not silent: Utils.Print("Failed to shut down gst cluster.")

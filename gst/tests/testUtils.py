@@ -19,21 +19,21 @@ class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
 
-    EosClientPath="programs/clgst/clgst"
-    MiscEosClientArgs="--no-auto-kgstd"
+    GstClientPath="programs/clgst/clgst"
+    MiscGstClientArgs="--no-auto-kgstd"
 
-    EosWalletName="kgstd"
-    EosWalletPath="programs/kgstd/"+ EosWalletName
+    GstWalletName="kgstd"
+    GstWalletPath="programs/kgstd/"+ GstWalletName
 
-    EosServerName="nodgst"
-    EosServerPath="programs/nodgst/"+ EosServerName
+    GstServerName="nodgst"
+    GstServerPath="programs/nodgst/"+ GstServerName
 
-    EosLauncherPath="programs/gstio-launcher/gstio-launcher"
+    GstLauncherPath="programs/gstio-launcher/gstio-launcher"
     MongoPath="mongo"
     ShuttingDown=False
     CheckOutputDeque=deque(maxlen=10)
 
-    EosBlockLogPath="programs/gstio-blocklog/gstio-blocklog"
+    GstBlockLogPath="programs/gstio-blocklog/gstio-blocklog"
 
     FileDivider="================================================================="
 
@@ -235,7 +235,7 @@ class Utils:
     @staticmethod
     def getBlockLog(blockLogLocation, silentErrors=False, exitOnError=False):
         assert(isinstance(blockLogLocation, str))
-        cmd="%s --blocks-dir %s --as-json-array" % (Utils.EosBlockLogPath, blockLogLocation)
+        cmd="%s --blocks-dir %s --as-json-array" % (Utils.GstBlockLogPath, blockLogLocation)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         rtn=None
         try:

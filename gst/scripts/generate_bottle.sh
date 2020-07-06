@@ -32,7 +32,7 @@ export SSUBPREFIX
 
 hash=`openssl dgst -sha256 ${NAME}.tar.gz | awk 'NF>1{print $NF}'`
 
-echo "class Eosio < Formula
+echo "class Gstio < Formula
 
    homepage \"${URL}\"
    revision 0

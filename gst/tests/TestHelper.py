@@ -66,16 +66,16 @@ class TestHelper(object):
             parser.add_argument("--seed", type=int, help="random seed", default=1)
 
         if "--host" in includeArgs:
-            parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.EosServerName),
+            parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.GstServerName),
                                      default=TestHelper.LOCAL_HOST)
         if "--port" in includeArgs:
-            parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EosServerName,
+            parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.GstServerName,
                                      default=TestHelper.DEFAULT_PORT)
         if "--wallet-host" in includeArgs:
-            parser.add_argument("--wallet-host", type=str, help="%s host" % Utils.EosWalletName,
+            parser.add_argument("--wallet-host", type=str, help="%s host" % Utils.GstWalletName,
                                      default=TestHelper.LOCAL_HOST)
         if "--wallet-port" in includeArgs:
-            parser.add_argument("--wallet-port", type=int, help="%s port" % Utils.EosWalletName,
+            parser.add_argument("--wallet-port", type=int, help="%s port" % Utils.GstWalletName,
                                      default=TestHelper.DEFAULT_WALLET_PORT)
         if "--prod-count" in includeArgs:
             parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
@@ -125,14 +125,14 @@ class TestHelper(object):
     
     @staticmethod
     # pylint: disable=too-many-arguments
-    def shutdown(cluster, walletMgr, testSuccessful=True, killEosInstances=True, killWallet=True, keepLogs=False, cleanRun=True, dumpErrorDetails=False):
+    def shutdown(cluster, walletMgr, testSuccessful=True, killGstInstances=True, killWallet=True, keepLogs=False, cleanRun=True, dumpErrorDetails=False):
         """Cluster and WalletMgr shutdown and cleanup."""
         assert(cluster)
         assert(isinstance(cluster, Cluster))
         if walletMgr:
             assert(isinstance(walletMgr, WalletMgr))
         assert(isinstance(testSuccessful, bool))
-        assert(isinstance(killEosInstances, bool))
+        assert(isinstance(killGstInstances, bool))
         assert(isinstance(killWallet, bool))
         assert(isinstance(cleanRun, bool))
         assert(isinstance(dumpErrorDetails, bool))
@@ -146,7 +146,7 @@ class TestHelper(object):
         if not testSuccessful and dumpErrorDetails:
             cluster.reportStatus()
             Utils.Print(Utils.FileDivider)
-            psOut=Cluster.pgrepEosServers(timeout=60)
+            psOut=Cluster.pgrepGstServers(timeout=60)
             Utils.Print("pgrep output:\n%s" % (psOut))
             cluster.dumpErrorDetails()
             if walletMgr:
@@ -161,7 +161,7 @@ class TestHelper(object):
                     Utils.Print("cerr={%s}\n" % (err))
                 Utils.Print("== cmd/cout/cerr pairs done. ==")
 
-        if killEosInstances:
+        if killGstInstances:
             Utils.Print("Shut down the cluster.")
             cluster.killall(allInstances=cleanRun)
             if testSuccessful and not keepLogs:
