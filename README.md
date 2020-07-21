@@ -3,10 +3,12 @@
 ### Ubuntu 搭建 GST 环境
 
 **1、下载 GST 代码**  
+
 >源码地址： https://github.com/gstchain/gst.git  
 >git clone https://github.com/gstchain/gst.git  
 
 **2、编译 & 安装**  
+
 >cd gst  
 >./gstio_build.sh  (出现GSTIO时编译完成)  
 >./gstio_install.sh
@@ -15,6 +17,7 @@
 
 __a. genesis.json__  
 第一次同步需要加上--genesis-json参数,文件配置如下  
+
 ```
 {
   "initial_timestamp": "2019-06-16T18:00:00.000",                                                                                            
@@ -41,8 +44,10 @@ __a. genesis.json__
   "initial_chain_id": "0000000000000000000000000000000000000000000000000000000000000000"
 }
 ```
+
 __b. config.ini__  
 启动节点时指定启动配置文件  
+
 ```
 # the endpoint upon which to listen for incoming connections (gstio::bnet_plugin)
 bnet-endpoint = 0.0.0.0:4321
@@ -279,9 +284,6 @@ network-version-match = 0
 
 sync-fetch-span = 10000
 
-# maximum sizes of transaction or block messages that are sent without first sending a notice (gstio::net_plugin)
-max-implicit-request = 1500
-
 # Enable expirimental socket read watermark optimization (gstio::net_plugin)
 use-socket-read-watermark = 0
 
@@ -376,7 +378,11 @@ plugin = gstio::http_plugin
 #plugin = gstio::mongo_db_plugin
 #mongodb-uri = mongodb://127.0.0.1:27017/gstdb
 ```
+
+**注意**:config.ini里面的max-implicit-request已经删除
+
 **4、启动节点,同步主网**  
+
 ```
 nodgst 
 -h     #查看帮助
@@ -386,15 +392,18 @@ nodgst
 --delete-all-blocks # 删除区块
 --genesis-json genesis.json  # 创世区块文件
 ```
+
 __a.启动方式__  
+
 >1.创建nodgst文件夹  
 >mkdir nodgst  
 >2.创建config.ini和genesis.json文件，并将上文配置信息写入  
 >vim config.ini  
 >vim genesis.json  
-**注：请根据本地主机情况更改配置**  
+>**注：请根据本地主机情况更改配置**  
 
 >3.创建启动脚本start.sh  
+
 ```
 #!/bin/bash                                                                                                                                  
 DATADIR="./blockchain"
@@ -411,11 +420,14 @@ nodgst \
 >> $DATADIR"/nodgst.log" 2>&1 & \ 
 echo $! > $DATADIR"/gstd.pid"
 ```
+
 >4.执行脚本   
 >./start.sh
 
+5.新增RPC API：get_supported_apis
 
+`/v1/node/get_supported_apis`添加了新的RPC API，以允许应用程序在API服务器上发现当前激活的插件集。
 
+6.gstiocpp已不再支持新版本智能合约编写，请推荐使用新的工具集编写智能合约，下载地址：
 
-
-
+https://github.com/gstchain/gstio.cdt.git
