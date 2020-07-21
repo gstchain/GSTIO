@@ -428,6 +428,6 @@ echo $! > $DATADIR"/gstd.pid"
 
 `/v1/node/get_supported_apis`添加了新的RPC API，以允许应用程序在API服务器上发现当前激活的插件集。
 
-6.gstiocpp已不再支持新版本智能合约编写，请推荐使用新的工具集编写智能合约，下载地址：
+6.gstiocpp已不再支持新版本智能合约编写，请使用新的工具集编写智能合约，下载地址：
 
 https://github.com/gstchain/gstio.cdt.git
