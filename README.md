@@ -3,8 +3,8 @@
 ### Ubuntu 搭建 GST 环境
 
 **1、下载 GST 代码**  
->源码地址： https://github.com/gstchain/gst.git  
->git clone https://github.com/gstchain/gst.git  
+>源码地址： https://github.com/gstchain/gstio.git  
+>git clone https://github.com/gstchain/gstio.git  
 
 **2、编译 & 安装**  
 >cd gst  
@@ -279,9 +279,6 @@ network-version-match = 0
 
 sync-fetch-span = 10000
 
-# maximum sizes of transaction or block messages that are sent without first sending a notice (gstio::net_plugin)
-max-implicit-request = 1500
-
 # Enable expirimental socket read watermark optimization (gstio::net_plugin)
 use-socket-read-watermark = 0
 
@@ -318,9 +315,8 @@ max-transaction-time = 3000
 max-irreversible-block-age = -1
 
 # ID of producer controlled by this node (e.g. inita; may specify multiple times) (gstio::producer_plugin)
-# producer-name = 
-producer-name = bp5
-#producer-name = bp1
+# producer-name = inita
+
 # (DEPRECATED - Use signature-provider instead) Tuple of [public key, WIF private key] (may specify multiple times) (gstio::producer_plugin)
 # private-key = 
 private-key =["your public key", "your private key"]
