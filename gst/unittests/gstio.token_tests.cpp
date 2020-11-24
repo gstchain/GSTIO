@@ -1,13 +1,17 @@
-#include <boost/test/unit_test.hpp>
-#include <gstio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in gst/LICENSE.txt
+ */
 #include <gstio/chain/abi_serializer.hpp>
-
-#include <gstio.token/gstio.token.wast.hpp>
-#include <gstio.token/gstio.token.abi.hpp>
+#include <gstio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <boost/test/unit_test.hpp>
+
+#include <contracts.hpp>
 
 using namespace gstio::testing;
 using namespace gstio;
@@ -27,8 +31,8 @@ public:
       create_accounts( { N(alice), N(bob), N(carol), N(gstio.token) } );
       produce_blocks( 2 );
 
-      set_code( N(gstio.token), gstio_token_wast );
-      set_abi( N(gstio.token), gstio_token_abi );
+      set_code( N(gstio.token), contracts::gstio_token_wasm() );
+      set_abi( N(gstio.token), contracts::gstio_token_abi().data() );
 
       produce_blocks();
 

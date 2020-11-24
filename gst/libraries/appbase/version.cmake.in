@@ -7,8 +7,6 @@ execute_process(
    RESULT_VARIABLE res
    WORKING_DIRECTORY @CMAKE_SOURCE_DIR@
 )
-
-
 #if(NOT ${res} STREQUAL "0")
 #  message(FATAL_ERROR "git describe failed")
 #endif()

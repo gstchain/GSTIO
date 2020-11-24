@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #include <gstio/chain/abi_serializer.hpp>
 #include <gstio/chain/contract_types.hpp>

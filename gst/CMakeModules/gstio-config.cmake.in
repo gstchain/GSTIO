@@ -2,6 +2,7 @@ if(GSTIO_ROOT STREQUAL "" OR NOT GSTIO_ROOT)
    set(GSTIO_ROOT "@GST_ROOT_DIR@")
 endif()
 list(APPEND CMAKE_MODULE_PATH ${GSTIO_ROOT}/lib/cmake/gstio)
+list(APPEND CMAKE_MODULE_PATH ${GSTIO_ROOT}/lib64/cmake/gstio)
 include(GstioTester)
 
 function(EXTRACT_MAJOR_MINOR_FROM_VERSION version success major minor)

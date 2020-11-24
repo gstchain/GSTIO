@@ -14,12 +14,8 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
-if (UNIX)
-   if (APPLE)
-      if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
-         set(LLVM_DIR "/usr/local/Cellar/llvm@4/4.0.1/lib/cmake/llvm")
-      endif()
-   endif()
+if (UNIX AND APPLE)
+   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4" "/usr/local/opt/gettext")
 endif()
 
 include( GNUInstallDirs )
@@ -33,9 +29,17 @@ set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
+set( BOOST_ROOT "$ENV{HOME}/opt/boost" )
+
 set(VERSION_MAJOR 1)
-set(VERSION_MINOR 4)
-set(VERSION_PATCH 4)
+set(VERSION_MINOR 7)
+set(VERSION_PATCH 7)
+
+if(VERSION_SUFFIX)
+    set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
+else()
+    set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+endif()
 
 set( CLI_CLIENT_EXECUTABLE_NAME clgst )
 set( NODE_EXECUTABLE_NAME nodgst )
@@ -64,12 +68,6 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
-
-#set (USE_PCH 1)
-
-if (USE_PCH)
-  include (cotire)
-endif(USE_PCH)
 
 # add defaults for openssl
 if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
@@ -107,18 +105,22 @@ IF( WIN32 )
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
 FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
-    thread
     date_time
     filesystem
     system
     program_options
-    signals
-    serialization
     chrono
     unit_test_framework
-    context
-    locale
     iostreams)
+
+# Some new stdlibc++s will #error on <experimental/string_view>; a problem for boost pre-1.69
+if( APPLE AND UNIX )
+   add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+endif()
+
+set(THREADS_PREFER_PTHREAD_FLAG 1)
+find_package(Threads)
+link_libraries(Threads::Threads)
 
 if( WIN32 )
 
@@ -174,10 +176,6 @@ else( WIN32 ) # Apple AND Linux
         endif()
     endif( APPLE )
 
-    if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-memcmp" )
-    endif()
-
     if( "${CMAKE_GENERATOR}" STREQUAL "Ninja" )
         if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
             set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics" )
@@ -200,7 +198,6 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 include(utils)
-add_subdirectory( externals )
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
   set( CORE_SYMBOL_NAME "GST" )
@@ -220,9 +217,7 @@ endif()
 
 message( STATUS "Using '${GSTIO_ROOT_KEY}' as public key for 'gstio' account" )
 
-include(wasm)
 add_subdirectory( libraries )
-add_subdirectory( contracts )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
@@ -251,28 +246,37 @@ install(FILES ${CMAKE_BINARY_DIR}/modules/gstio-config.cmake DESTINATION ${CMAKE
 configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/GstioTester.cmake.in ${CMAKE_BINARY_DIR}/modules/GstioTester.cmake @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/modules/GstioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/gstio)
 
-configure_file(${CMAKE_SOURCE_DIR}/LICENSE 
+configure_file(${CMAKE_SOURCE_DIR}/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/wabt/LICENSE 
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wabt/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE.wabt COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt 
+configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt
                ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE.softfloat COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE 
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE.wavm COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/upstream/COPYING 
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/upstream/COPYING
                ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE.secp256k1 COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go 
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go
                ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE.go COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/externals/binaryen/LICENSE 
-               ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE.binaryen COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/yubihsm/LICENSE
+               ${CMAKE_BINARY_DIR}/licenses/gstio/LICENSE.yubihsm COPYONLY)
 
-install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/)
-install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.wabt)
-install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.softfloat)
-install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.wavm)
-install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.secp256k1)
-install(FILES externals/binaryen/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.binaryen)
-install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ )
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ COMPONENT base)
+install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.wabt COMPONENT base)
+install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.softfloat COMPONENT base)
+install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.wavm COMPONENT base)
+install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.secp256k1 COMPONENT base)
+install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ COMPONENT base)
+install(FILES libraries/yubihsm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/gstio/ RENAME LICENSE.yubihsm COMPONENT base)
+
+add_custom_target(base-install
+  COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
+  COMMAND "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=base -P "${CMAKE_BINARY_DIR}/cmake_install.cmake"
+  USES_TERMINAL
+)
+
+get_property(_CTEST_CUSTOM_TESTS_IGNORE GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE)
+file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNORE ${_CTEST_CUSTOM_TESTS_IGNORE})")
 
 include(package)
 include(doxygen)

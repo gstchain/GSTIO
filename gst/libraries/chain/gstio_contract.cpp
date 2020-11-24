@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #include <gstio/chain/gstio_contract.hpp>
 #include <gstio/chain/contract_table_objects.hpp>
@@ -57,7 +57,7 @@ void validate_authority_precondition( const apply_context& context, const author
       }
    }
 
-   if( context.control.is_producing_block() ) {
+   if( context.trx_context.enforce_whiteblacklist && context.control.is_producing_block() ) {
       for( const auto& p : auth.keys ) {
          context.control.check_key_list( p.key );
       }
@@ -113,7 +113,7 @@ void apply_gstio_newaccount(apply_context& context) {
                                                                     std::move(create.owner) );
    const auto& active_permission = authorization.create_permission( create.name, config::active_name, owner_permission.id,
                                                                     std::move(create.active) );
-
+   //std::cout<<"D__gsio_contract 这里创建了新用户: "<<create.name<<std::endl;
    context.control.get_mutable_resource_limits_manager().initialize_account(create.name);
 
    int64_t ram_delta = config::overhead_per_account_ram_bytes;
@@ -155,10 +155,11 @@ void apply_gstio_setcode(apply_context& context) {
       // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
       a.code_version = code_id;
-      a.code.resize( code_size );
-      if( code_size > 0 )
-         memcpy( a.code.data(), act.code.data(), code_size );
-
+      if ( code_size > 0 ) {
+         a.code.assign(act.code.data(), code_size);
+      } else {
+         a.code.resize(0);
+      }
    });
 
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
@@ -185,9 +186,11 @@ void apply_gstio_setabi(apply_context& context) {
    int64_t new_size = abi_size;
 
    db.modify( account, [&]( auto& a ) {
-      a.abi.resize( abi_size );
-      if( abi_size > 0 )
-         memcpy( a.abi.data(), act.abi.data(), abi_size );
+      if (abi_size > 0) {
+         a.abi.assign(act.abi.data(), abi_size);
+      } else {
+         a.abi.resize(0);
+      }
    });
 
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
@@ -282,7 +285,7 @@ void apply_gstio_deleteauth(apply_context& context) {
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       GST_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.", 
+                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.",
                  ("code", string(range.first->code))("type", string(range.first->message_type)));
    }
 

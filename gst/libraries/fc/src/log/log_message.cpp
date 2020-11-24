@@ -162,6 +162,9 @@ namespace fc
          case log_level::off:
             return "off";
       }
+#ifdef __GNUC__
+      __builtin_unreachable();
+#endif
    }
 
    string     log_context::get_file()const       { return my->file; }
@@ -224,6 +227,12 @@ namespace fc
    string        log_message::get_message()const
    {
       return format_string( my->format, my->args );
+   }
+
+   string        log_message::get_limited_message()const
+   {
+      const bool minimize = true;
+      return format_string( my->format, my->args, minimize );
    }
 
 

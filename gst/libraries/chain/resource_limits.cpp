@@ -12,6 +12,8 @@ namespace gstio { namespace chain { namespace resource_limits {
 using resource_index_set = index_set<
    resource_limits_index,
    resource_usage_index,
+   resource_gst_index,
+   resource_activation_gst_index,
    resource_limits_state_index,
    resource_limits_config_index
 >;
@@ -96,6 +98,10 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    _db.create<resource_usage_object>([&]( resource_usage_object& bu ) {
       bu.owner = account;
    });
+    //std::cout<<"D__新增的用户:"<<account<<std::endl;
+   // _db.create<resource_gst_object>([&]( resource_gst_object& bg ) {   //新增的表
+   //     bg.owner = account;
+   //  });
 }
 
 void resource_limits_manager::set_block_parameters(const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters ) {
@@ -200,18 +206,103 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
    _db.modify( usage, [&]( auto& u ) {
      u.ram_usage += ram_delta;
    });
+
+   //std::cout<<"D__当前用户"<<account<<"消耗的gstbyte: "<<ram_delta<<std::endl;
+   if(is_activation()){
+      const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
+      if(pending_limits != nullptr){    //系统第一次部署合约会走这儿
+         //更新消耗的表
+         auto& limits1 = * pending_limits;
+         _db.modify( limits1, [&]( resource_gst_object& limits ){
+            if((int64_t)(limits.gst_usage) + ram_delta < 0){ //防止老用户部署的新合约小于旧合约，消耗溢出成无限大
+               limits.gst_usage = 0;
+            }else{
+               limits.gst_usage += ram_delta;
+            }
+            //std::cout<<"D__当前用户"<<limits.owner<<" 消耗了 " <<limits.gst_usage<<std::endl;
+         });
+      }else{  
+         //老用户第一次进来时先为他们创表                                                            );  
+            _db.create<resource_gst_object>([&](resource_gst_object& pending_limits){
+                     pending_limits.owner = account;
+                     pending_limits.gst_bytes = 0;
+                     pending_limits.pending = true;
+                     if(ram_delta < 0){
+                        pending_limits.gst_usage = 0;
+                     }else
+                     {
+                        pending_limits.gst_usage = ram_delta;
+                     }
+            });
+          //  }
+      }
+   }
+
 }
 
 void resource_limits_manager::verify_account_ram_usage( const account_name account )const {
+
    int64_t ram_bytes; int64_t net_weight; int64_t cpu_weight;
    get_account_limits( account, ram_bytes, net_weight, cpu_weight );
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
    if( ram_bytes >= 0 ) {
-      GST_ASSERT( usage.ram_usage <= ram_bytes, ram_usage_exceeded,
+      GST_ASSERT( usage.ram_usage <= static_cast<uint64_t>(ram_bytes), ram_usage_exceeded,
                   "account ${account} has insufficient ram; needs ${needs} bytes has ${available} bytes",
                   ("account", account)("needs",usage.ram_usage)("available",ram_bytes)              );
    }
+
+   if(is_activation()){
+      const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
+      if(pending_limits != nullptr){  //系统第一次部署合约会走这儿
+         if(pending_limits->gst_bytes >= 0 && pending_limits->owner != "gstio.gas"){ //gstio.gas用户不计算gas消耗
+            GST_ASSERT( pending_limits->gst_usage <= static_cast<uint64_t>(pending_limits->gst_bytes), gstio_assert_message_exception,
+                        "account ${account} has insufficient gas; needs ${needs} gas has ${available} gas",
+                        ("account", account)("needs",pending_limits->gst_usage)("available",pending_limits->gst_bytes)              );
+         }
+      }else{   // gstio需要部署系统合约，当一次创建gstgas时,操作也不耗费手续费
+            GST_ASSERT( ( "gstio.gas" == account),gstio_assert_message_exception,"用户${account}请兑换gas再进行此操作",
+                        ("account", account)                                                          );
+      
+      }
+   }
+}
+
+void resource_limits_manager::verify_account_gst_usage( const name account )const {
+   int64_t gst_bytes;
+   const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
+   //老版本的账户进来时要把兑换的gst资源重新写表
+   GST_ASSERT( pending_limits != nullptr,gstio_assert_message_exception,"用户${account}请兑换gas再进行此操作",
+                   ("account", account)                                                                  );
+   gst_bytes = pending_limits->gst_bytes-pending_limits->gst_usage;
+   //std::cout<<"D__当前用户"<<account<<" gst_bytes" <<pending_limits->gst_bytes<<std::endl;
+   if(pending_limits->gst_bytes >=0 ){
+      GST_ASSERT( pending_limits->gst_bytes  >= pending_limits->gst_usage+100,gstio_assert_message_exception,
+                  "用户 ${account} gas不足; 需要 ${needs} gas 剩余 ${available} gas",
+                     ("account", account)("needs",100)("available",gst_bytes)              );
+      //更新消耗的表
+      auto& limits1 = * pending_limits;
+      _db.modify( limits1, [&]( resource_gst_object& limits ){
+         limits.gst_usage += 100;
+         //std::cout<<"D__当前用户"<<limits.owner<<" 消耗了" <<limits.gst_usage<<std::endl;
+      });
+   }
+}
+
+bool resource_limits_manager::is_activation()const{
+   //std::cout<<"D__进入is_activation函数"<<std::endl;
+   name acname("gstio");
+   const auto*  activation_gst = _db.find<resource_activation_gst_object, by_owner>( boost::make_tuple(true, acname) );
+   //std::cout<<"D__查看gst gas是否激活"<<std::endl;
+   if(activation_gst == nullptr){
+      return false;
+   }
+   if(!activation_gst->is_activation){
+      //std::cout<<"D__查看gst gas 目前已停止使用"<<std::endl;
+      return false;
+   }
+   //std::cout<<"D__查看gst gas已激活"<<std::endl;
+   return true;
 }
 
 int64_t resource_limits_manager::get_account_ram_usage( const account_name& name )const {
@@ -269,6 +360,94 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
    return decreased_limit;
 }
 
+bool resource_limits_manager::set_gst_limits( const account_name& account, int64_t gst_bytes) {
+  
+   auto find_or_create_pending_limits = [&]() -> const resource_gst_object& {
+      const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
+      if (pending_limits == nullptr) {
+         //std::cout<<"D__为新用户设置"<<account<<"  "<<gst_bytes<<std::endl;
+         // const auto& limits = _db.get<resource_gst_object, by_owner>( boost::make_tuple(false, account));
+         // if(limits==nullptr){   //后期加的表，有可能数据库里没先前的数据,不采用这种方法
+
+         //    return _db.create<resource_gst_object>([&](resource_gst_object& pending_limits){
+         //    pending_limits.owner = account;
+         //    pending_limits.gst_bytes = gst_bytes;
+         //    pending_limits.pending = true;
+         //    }
+         // }else{
+            return _db.create<resource_gst_object>([&](resource_gst_object& pending_limits){
+               pending_limits.owner = account;
+               pending_limits.gst_bytes = gst_bytes;
+               pending_limits.pending = true;
+            });
+         //}
+      } else {
+         return *pending_limits;
+      }
+   };
+
+   // update the users weights directly
+   auto& limits = find_or_create_pending_limits();
+
+   if( limits.gst_bytes > gst_bytes ){      //出售了资源
+      GST_ASSERT( gst_bytes  >= limits.gst_usage,gstio_assert_message_exception,
+                  "用户 ${account} gas不足; 当前剩余 ${needs} gas 已用 ${available} gas",
+                     ("account", account)("needs",(limits.gst_bytes-limits.gst_usage))("available",limits.gst_usage)              );
+   }
+
+
+   bool decreased_limit = false;
+
+   if( gst_bytes >= 0 ) {
+
+      decreased_limit = ( (limits.gst_bytes < 0) || (gst_bytes < limits.gst_bytes) );
+
+   }
+   //std::cout<<"D__当前用户"<<account<<"   gst_bytes总量为"<<gst_bytes<<std::endl;
+   _db.modify( limits, [&]( resource_gst_object& pending_limits ){
+      pending_limits.gst_bytes = gst_bytes;
+
+   });
+
+   // 取消这种流程，改为开关激活
+   // //第一次购买资源时激活resource_activation_gst_object
+   // name acname("gstio");
+   // const auto*  activation_gst = _db.find<resource_activation_gst_object, by_owner>( boost::make_tuple(true, acname) );
+   // std::cout<<"D__gst gas已经激活"<<std::endl;
+   // if(activation_gst == nullptr){
+   //     std::cout<<"D__gst gas已经激活2222"<<std::endl;
+   //    _db.create<resource_activation_gst_object>([&](resource_activation_gst_object& activation_gst){
+   //       activation_gst.owner = acname;
+   //       activation_gst.is_activation = true;
+   //       activation_gst.value = 1;
+   //     });
+   // }
+
+   return decreased_limit;
+}
+
+void resource_limits_manager::set_gas_limits(bool flag){
+   name acname("gstio");
+   //std::cout<<"D__是否激活： "<<flag<<std::endl;
+   const auto*  activation_gst = _db.find<resource_activation_gst_object, by_owner>( boost::make_tuple(true, acname) );
+   if(activation_gst == nullptr){
+      //std::cout<<"D__第一次创建激活账户"<<std::endl;
+      _db.create<resource_activation_gst_object>([&](resource_activation_gst_object& activation_gst){
+         activation_gst.owner = acname;
+         activation_gst.pending = true;
+         activation_gst.is_activation = true;
+       });
+   }else
+   {
+      //std::cout<<"D__修改激活状态"<<std::endl;
+      auto & gas = *activation_gst;
+      _db.modify( gas, [&]( resource_activation_gst_object& gas ){
+         gas.is_activation = flag;
+      });
+   }
+   
+}
+
 void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
    const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
    if (pending_buo) {
@@ -291,12 +470,12 @@ void resource_limits_manager::process_account_limit_updates() {
    // convenience local lambda to reduce clutter
    auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
       if (value > 0) {
-         GST_ASSERT(total >= value, rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
+         GST_ASSERT(total >= static_cast<uint64_t>(value), rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
          total -= value;
       }
 
       if (pending_value > 0) {
-         GST_ASSERT(UINT64_MAX - total >= pending_value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
+         GST_ASSERT(UINT64_MAX - total >= static_cast<uint64_t>(pending_value), rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
          total += pending_value;
       }
 

@@ -22,6 +22,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
+#include <string.h>
 
 namespace gstio { namespace chain {
    using namespace webassembly;
@@ -147,6 +148,18 @@ class privileged_api : public context_aware_api {
          }
       }
 
+      void set_resource_limits2(account_name account,int64_t bytes){
+         GST_ASSERT(bytes >= -1, wasm_execution_error, "invalid value for gas resource limit expected [-1,INT64_MAX]");
+         if( context.control.get_mutable_resource_limits_manager().set_gst_limits(account, bytes) ) {
+            //context.trx_context.validate_ram_usage.insert( account );
+         }
+
+      }
+
+      void set_gas_limits(int64_t flag){
+         context.control.get_mutable_resource_limits_manager().set_gas_limits(flag);
+      }
+
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
@@ -211,6 +224,8 @@ class softfloat_api : public context_aware_api {
       softfloat_api( apply_context& ctx )
       :context_aware_api(ctx, true) {}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
       // float binops
       float _gstio_f32_add( float a, float b ) {
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
@@ -228,6 +243,7 @@ class softfloat_api : public context_aware_api {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
+#pragma GCC diagnostic pop
       float _gstio_f32_min( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
@@ -237,8 +253,8 @@ class softfloat_api : public context_aware_api {
          if (is_nan(b)) {
             return bf;
          }
-         if ( sign_bit(a) != sign_bit(b) ) {
-            return sign_bit(a) ? af : bf;
+         if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
+            return f32_sign_bit(a) ? af : bf;
          }
          return f32_lt(a,b) ? af : bf;
       }
@@ -251,8 +267,8 @@ class softfloat_api : public context_aware_api {
          if (is_nan(b)) {
             return bf;
          }
-         if ( sign_bit(a) != sign_bit(b) ) {
-            return sign_bit(a) ? bf : af;
+         if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
+            return f32_sign_bit(a) ? bf : af;
          }
          return f32_lt( a, b ) ? bf : af;
       }
@@ -404,8 +420,8 @@ class softfloat_api : public context_aware_api {
             return af;
          if (is_nan(b))
             return bf;
-         if (sign_bit(a) != sign_bit(b))
-            return sign_bit(a) ? af : bf;
+         if (f64_sign_bit(a) != f64_sign_bit(b))
+            return f64_sign_bit(a) ? af : bf;
          return f64_lt( a, b ) ? af : bf;
       }
       double _gstio_f64_max( double af, double bf ) {
@@ -415,8 +431,8 @@ class softfloat_api : public context_aware_api {
             return af;
          if (is_nan(b))
             return bf;
-         if (sign_bit(a) != sign_bit(b))
-            return sign_bit(a) ? bf : af;
+         if (f64_sign_bit(a) != f64_sign_bit(b))
+            return f64_sign_bit(a) ? bf : af;
          return f64_lt( a, b ) ? bf : af;
       }
       double _gstio_f64_copysign( double af, double bf ) {
@@ -650,32 +666,17 @@ class softfloat_api : public context_aware_api {
       }
 
       static bool is_nan( const float32_t f ) {
-         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
+         return f32_is_nan( f );
       }
       static bool is_nan( const float64_t f ) {
-         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+         return f64_is_nan( f );
       }
       static bool is_nan( const float128_t& f ) {
-         return (((~(f.v[1]) & uint64_t( 0x7FFF000000000000 )) == 0) && (f.v[0] || ((f.v[1]) & uint64_t( 0x0000FFFFFFFFFFFF ))));
+         return f128_is_nan( f );
       }
-      static float32_t to_softfloat32( float f ) {
-         return *reinterpret_cast<float32_t*>(&f);
-      }
-      static float64_t to_softfloat64( double d ) {
-         return *reinterpret_cast<float64_t*>(&d);
-      }
-      static float from_softfloat32( float32_t f ) {
-         return *reinterpret_cast<float*>(&f);
-      }
-      static double from_softfloat64( float64_t d ) {
-         return *reinterpret_cast<double*>(&d);
-      }
+
       static constexpr uint32_t inv_float_eps = 0x4B000000;
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
-
-      static bool sign_bit( float32_t f ) { return f.v >> 31; }
-      static bool sign_bit( float64_t f ) { return f.v >> 63; }
-
 };
 
 class producer_api : public context_aware_api {
@@ -916,36 +917,36 @@ class system_api : public context_aware_api {
 
 };
 
+constexpr size_t max_assert_message = 1024;
+
 class context_free_system_api :  public context_aware_api {
 public:
    explicit context_free_system_api( apply_context& ctx )
    :context_aware_api(ctx,true){}
 
    void abort() {
-      edump(("abort() called"));
       GST_ASSERT( false, abort_called, "abort() called");
    }
 
    // Kept as intrinsic rather than implementing on WASM side (using gstio_assert_message and strlen) because strlen is faster on native side.
    void gstio_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg );
-         edump((message));
+         const size_t sz = strnlen( msg, max_assert_message );
+         std::string message( msg, sz );
          GST_THROW( gstio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void gstio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg, msg_len );
-         edump((message));
+         const size_t sz = msg_len > max_assert_message ? max_assert_message : msg_len;
+         std::string message( msg, sz );
          GST_THROW( gstio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void gstio_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         edump((error_code));
          GST_THROW( gstio_assert_code_exception,
                     "assertion failure with error code: ${error_code}", ("error_code", error_code) );
       }
@@ -1082,12 +1083,19 @@ class console_api : public context_aware_api {
             auto& console = context.get_console_stream();
             auto orig_prec = console.precision();
 
+#ifdef __x86_64__
             console.precision( std::numeric_limits<long double>::digits10 );
-
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
             context.console_append( *(long double*)(&val_approx) );
-
+#pragma GCC diagnostic pop
+#else
+            console.precision( std::numeric_limits<double>::digits10 );
+            double val_approx = from_softfloat64( f128M_to_f64(&val) );
+            context.console_append(val_approx);
+#endif
             console.precision( orig_prec );
          }
       }
@@ -1281,7 +1289,7 @@ class memory_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
-         GST_ASSERT((std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
+         GST_ASSERT((size_t)(std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
                overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
          return (char *)::memcpy(dest, src, length);
       }
@@ -1515,18 +1523,18 @@ class compiler_builtins : public context_aware_api {
 
       // conversion long double
       void __extendsftf2( float128_t& ret, float f ) {
-         ret = f32_to_f128( softfloat_api::to_softfloat32(f) );
+         ret = f32_to_f128( to_softfloat32(f) );
       }
       void __extenddftf2( float128_t& ret, double d ) {
-         ret = f64_to_f128( softfloat_api::to_softfloat64(d) );
+         ret = f64_to_f128( to_softfloat64(d) );
       }
       double __trunctfdf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return softfloat_api::from_softfloat64(f128_to_f64( f ));
+         return from_softfloat64(f128_to_f64( f ));
       }
       float __trunctfsf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return softfloat_api::from_softfloat32(f128_to_f32( f ));
+         return from_softfloat32(f128_to_f32( f ));
       }
       int32_t __fixtfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
@@ -1553,19 +1561,19 @@ class compiler_builtins : public context_aware_api {
          ret = ___fixunstfti( f );
       }
       void __fixsfti( __int128& ret, float a ) {
-         ret = ___fixsfti( softfloat_api::to_softfloat32(a).v );
+         ret = ___fixsfti( to_softfloat32(a).v );
       }
       void __fixdfti( __int128& ret, double a ) {
-         ret = ___fixdfti( softfloat_api::to_softfloat64(a).v );
+         ret = ___fixdfti( to_softfloat64(a).v );
       }
       void __fixunssfti( unsigned __int128& ret, float a ) {
-         ret = ___fixunssfti( softfloat_api::to_softfloat32(a).v );
+         ret = ___fixunssfti( to_softfloat32(a).v );
       }
       void __fixunsdfti( unsigned __int128& ret, double a ) {
-         ret = ___fixunsdfti( softfloat_api::to_softfloat64(a).v );
+         ret = ___fixunsdfti( to_softfloat64(a).v );
       }
       double __floatsidf( int32_t i ) {
-         return softfloat_api::from_softfloat64(i32_to_f64(i));
+         return from_softfloat64(i32_to_f64(i));
       }
       void __floatsitf( float128_t& ret, int32_t i ) {
          ret = i32_to_f128(i);
@@ -1693,12 +1701,14 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__trunctfdf2,  double(int64_t, int64_t)                       )
    (__trunctfsf2,  float(int64_t, int64_t)                        )
 );
-
+//这个里面好像不支持bool类型。。。
 REGISTER_INTRINSICS(privileged_api,
    (is_feature_active,                int(int64_t)                          )
    (activate_feature,                 void(int64_t)                         )
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
+   (set_resource_limits2,             void(int64_t,int64_t)                 )
+   (set_gas_limits,                   void(int64_t)                         )
    (set_proposed_producers,           int64_t(int,int)                      )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )

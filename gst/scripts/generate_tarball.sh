@@ -4,7 +4,7 @@ NAME=$1
 GST_PREFIX=${PREFIX}/${SUBPREFIX}
 mkdir -p ${PREFIX}/bin/
 #mkdir -p ${PREFIX}/lib/cmake/${PROJECT}
-mkdir -p ${GST_PREFIX}/bin 
+mkdir -p ${GST_PREFIX}/bin
 mkdir -p ${GST_PREFIX}/licenses/gstio
 #mkdir -p ${GST_PREFIX}/include
 #mkdir -p ${GST_PREFIX}/lib/cmake/${PROJECT}
@@ -12,10 +12,10 @@ mkdir -p ${GST_PREFIX}/licenses/gstio
 #mkdir -p ${GST_PREFIX}/scripts
 
 # install binaries 
-cp -R ${BUILD_DIR}/bin/* ${GST_PREFIX}/bin 
+cp -R ${BUILD_DIR}/bin/* ${GST_PREFIX}/bin  || exit 1
 
 # install licenses
-cp -R ${BUILD_DIR}/licenses/gstio/* ${GST_PREFIX}/licenses
+cp -R ${BUILD_DIR}/licenses/gstio/* ${GST_PREFIX}/licenses || exit 1
 
 # install libraries
 #cp -R ${BUILD_DIR}/lib/* ${GST_PREFIX}/lib
@@ -33,12 +33,10 @@ cp -R ${BUILD_DIR}/licenses/gstio/* ${GST_PREFIX}/licenses
 #ln -sf ../../../${SUBPREFIX}/lib/cmake/${PROJECT}/GstioTester.cmake GstioTester.cmake
 #popd &> /dev/null
 
-pushd ${PREFIX}/bin &> /dev/null
-for f in `ls ${BUILD_DIR}/bin/`; do
+for f in $(ls "${BUILD_DIR}/bin/"); do
    bn=$(basename $f)
-   ln -sf ../${SUBPREFIX}/bin/$bn $bn
+   ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn || exit 1
 done
-popd &> /dev/null
-
-tar -cvzf $NAME ./${PREFIX}/*
-rm -r ${PREFIX}
+echo "Generating Tarball $NAME.tar.gz..."
+tar -cvzf $NAME.tar.gz ./${PREFIX}/* || exit 1
+rm -r ${PREFIX} || exit 1

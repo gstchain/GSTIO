@@ -1,0 +1,40 @@
+version: "3"
+
+services:
+  builder:
+    build:
+      context: builder
+    image: gstio/builder
+
+  nodgstd:
+    build:
+      context: .
+    image: gstio/gst
+    command: /opt/gstio/bin/nodgstd.sh --data-dir /opt/gstio/bin/data-dir -e --http-alias=nodgstd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888
+    hostname: nodgstd
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - nodgst-data-volume:/opt/gstio/bin/data-dir
+    cap_add:
+      - IPC_LOCK
+    stop_grace_period: 10m
+
+  kgstd:
+    image: gstio/gst
+    command: /opt/gstio/bin/kgstd --wallet-dir /opt/gstio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=kgstd:8900 --http-alias=localhost:8900
+    hostname: kgstd
+    links:
+      - nodgstd
+    volumes:
+      - kgstd-data-volume:/opt/gstio/bin/data-dir
+    stop_grace_period: 10m
+
+volumes:
+  nodgst-data-volume:
+    external: true
+  kgstd-data-volume:
+    external: true

@@ -4,6 +4,7 @@
 #include <gstio/chain/chain_config.hpp>
 #include <gstio/chain/config.hpp>
 #include <gstio/chain/types.hpp>
+#include <gstio/chain/asset.hpp>
 
 namespace gstio { namespace chain {
 
@@ -153,6 +154,21 @@ struct onerror {
       return N(onerror);
    }
 };
+//新增一个结构解析转账data
+struct transfer{
+   account_name      from;
+   account_name      to;
+   asset             quantity;
+   string            memo;
+
+   static account_name get_account(){
+      return N(gstio.token);
+   }
+
+   static action_name get_name(){
+      return N(transfer);
+   }
+};
 
 } } /// namespace gstio::chain
 
@@ -165,3 +181,4 @@ FC_REFLECT( gstio::chain::linkauth                         , (account)(code)(typ
 FC_REFLECT( gstio::chain::unlinkauth                       , (account)(code)(type) )
 FC_REFLECT( gstio::chain::canceldelay                      , (canceling_auth)(trx_id) )
 FC_REFLECT( gstio::chain::onerror                          , (sender_id)(sent_trx) )
+FC_REFLECT( gstio::chain::transfer                         , (from)(to)(quantity)(memo) )

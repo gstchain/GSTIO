@@ -123,7 +123,16 @@ namespace gstio { namespace chain {
       }
    }
 
-   block_state_ptr fork_database::add( block_state_ptr n ) {
+   block_state_ptr fork_database::add( const block_state_ptr& n, bool skip_validate_previous ) {
+      GST_ASSERT( n, fork_database_exception, "attempt to add null block state" );
+      GST_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
+
+      if( !skip_validate_previous ) {
+         auto prior = my->index.find( n->block->previous );
+         GST_ASSERT( prior != my->index.end(), unlinkable_block_exception,
+                     "unlinkable block", ("id", n->block->id())("previous", n->block->previous) );
+      }
+
       auto inserted = my->index.insert(n);
       GST_ASSERT( inserted.second, fork_database_exception, "duplicate block added?" );
 
@@ -139,7 +148,7 @@ namespace gstio { namespace chain {
       return n;
    }
 
-   block_state_ptr fork_database::add( signed_block_ptr b, bool trust ) {
+   block_state_ptr fork_database::add( signed_block_ptr b, bool skip_validate_signee ) {
       GST_ASSERT( b, fork_database_exception, "attempt to add null block" );
       GST_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
 
@@ -150,9 +159,9 @@ namespace gstio { namespace chain {
       auto prior = by_id_idx.find( b->previous );
       GST_ASSERT( prior != by_id_idx.end(), unlinkable_block_exception, "unlinkable block", ("id", string(b->id()))("previous", string(b->previous)) );
 
-      auto result = std::make_shared<block_state>( **prior, move(b), trust );
+      auto result = std::make_shared<block_state>( **prior, move(b), skip_validate_signee );
       GST_ASSERT( result, fork_database_exception , "fail to add new block state" );
-      return add(result);
+      return add(result, true);
    }
 
    const block_state_ptr& fork_database::head()const { return my->head; }

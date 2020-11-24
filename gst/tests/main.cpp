@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #include <cstdlib>
 #include <iostream>

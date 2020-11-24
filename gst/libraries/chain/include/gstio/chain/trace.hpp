@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #pragma once
 
@@ -19,6 +19,16 @@ namespace gstio { namespace chain {
 
       friend bool operator<( const account_delta& lhs, const account_delta& rhs ) { return lhs.account < rhs.account; }
    };
+   //用来记录每次gas消耗的结构体
+   struct account_gas{
+      account_gas( const account_name& n, int64_t d):account(n),gas(d){}
+      account_gas(){}
+
+      account_name account;
+      int64_t gas = 0;
+
+      friend bool operator<( const account_gas& lhs, const account_gas& rhs ) { return lhs.account < rhs.account; }
+   };
 
    struct base_action_trace {
       base_action_trace( const action_receipt& r ):receipt(r){}
@@ -36,6 +46,9 @@ namespace gstio { namespace chain {
       fc::optional<block_id_type>     producer_block_id;
       flat_set<account_delta>         account_ram_deltas;
       fc::optional<fc::exception>     except;
+      //新增字段
+      flat_set<account_gas>            account_gst_gas; 
+      bool                 gas_status=false;
    };
 
    struct action_trace : public base_action_trace {
@@ -68,9 +81,12 @@ namespace gstio { namespace chain {
 FC_REFLECT( gstio::chain::account_delta,
             (account)(delta) )
 
+FC_REFLECT( gstio::chain::account_gas,
+            (account)(gas) )
+
 FC_REFLECT( gstio::chain::base_action_trace,
                     (receipt)(act)(context_free)(elapsed)(console)(trx_id)
-                    (block_num)(block_time)(producer_block_id)(account_ram_deltas)(except) )
+                    (block_num)(block_time)(producer_block_id)(account_ram_deltas)(except)(gas_status)(account_gst_gas) )
 
 FC_REFLECT_DERIVED( gstio::chain::action_trace,
                     (gstio::chain::base_action_trace), (inline_traces) )

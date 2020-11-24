@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #include <gstio/producer_api_plugin/producer_api_plugin.hpp>
 #include <gstio/chain/exceptions.hpp>

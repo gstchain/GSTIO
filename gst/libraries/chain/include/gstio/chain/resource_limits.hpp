@@ -55,10 +55,19 @@ namespace gstio { namespace chain { namespace resource_limits {
 
          void add_pending_ram_usage( const account_name account, int64_t ram_delta );
          void verify_account_ram_usage( const account_name accunt )const;
+         void verify_account_gst_usage( const name accunt )const;
+         //查看gas是否激活
+         bool is_activation()const;
 
          /// set_account_limits returns true if new ram_bytes limit is more restrictive than the previously set one
          bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
+
+         //设置gst兑换的资源
+         bool set_gst_limits(const account_name& account, int64_t gst_bytes);
+
+         //是否使用gas资源收手续费
+         void set_gas_limits(bool flag);
 
          void process_account_limit_updates();
          void process_block_usage( uint32_t block_num );

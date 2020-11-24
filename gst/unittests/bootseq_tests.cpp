@@ -1,20 +1,17 @@
-#include <boost/test/unit_test.hpp>
-#include <gstio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in gst/LICENSE.txt
+ */
 #include <gstio/chain/abi_serializer.hpp>
-
-#include <gstio.system/gstio.system.wast.hpp>
-#include <gstio.system/gstio.system.abi.hpp>
-// These contracts are still under dev
-#include <gstio.bios/gstio.bios.wast.hpp>
-#include <gstio.bios/gstio.bios.abi.hpp>
-#include <gstio.token/gstio.token.wast.hpp>
-#include <gstio.token/gstio.token.abi.hpp>
-#include <gstio.msig/gstio.msig.wast.hpp>
-#include <gstio.msig/gstio.msig.abi.hpp>
+#include <gstio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <boost/test/unit_test.hpp>
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -36,10 +33,10 @@ struct genesis_account {
 };
 
 std::vector<genesis_account> test_genesis( {
-  {N(b1),    100'000'000'0000ll},
-  {N(whale4), 40'000'000'0000ll},
-  {N(whale3), 30'000'000'0000ll},
-  {N(whale2), 20'000'000'0000ll},
+  {N(b1),       100'000'000'0000ll},
+  {N(whale4),    40'000'000'0000ll},
+  {N(whale3),    30'000'000'0000ll},
+  {N(whale2),    20'000'000'0000ll},
   {N(proda),      1'000'000'0000ll},
   {N(prodb),      1'000'000'0000ll},
   {N(prodc),      1'000'000'0000ll},
@@ -61,23 +58,37 @@ std::vector<genesis_account> test_genesis( {
   {N(prods),      1'000'000'0000ll},
   {N(prodt),      1'000'000'0000ll},
   {N(produ),      1'000'000'0000ll},
-  {N(runnerup1),1'000'000'0000ll},
-  {N(runnerup2),1'000'000'0000ll},
-  {N(runnerup3),1'000'000'0000ll},
-  {N(minow1),        100'0000ll},
-  {N(minow2),          1'0000ll},
-  {N(minow3),          1'0000ll},
-  {N(masses),800'000'000'0000ll}
+  {N(runnerup1),  1'000'000'0000ll},
+  {N(runnerup2),  1'000'000'0000ll},
+  {N(runnerup3),  1'000'000'0000ll},
+  {N(minow1),           100'0000ll},
+  {N(minow2),             1'0000ll},
+  {N(minow3),             1'0000ll},
+  {N(masses),   800'000'000'0000ll}
 });
 
 class bootseq_tester : public TESTER {
 public:
+   void deploy_contract( bool call_init = true ) {
+      set_code( config::system_account_name, contracts::gstio_system_wasm() );
+      set_abi( config::system_account_name, contracts::gstio_system_abi().data() );
+      if( call_init ) {
+         base_tester::push_action(config::system_account_name, N(init),
+                                  config::system_account_name,  mutable_variant_object()
+                                  ("version", 0)
+                                  ("core", CORE_SYM_STR)
+            );
+      }
+      const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
+      abi_def abi;
+      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+      abi_ser.set_abi(abi, abi_serializer_max_time);
+   }
 
    fc::variant get_global_state() {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "gstio_global_state", data, abi_serializer_max_time );
-
    }
 
     auto buyram( name payer, name receiver, asset ram ) {
@@ -159,9 +170,9 @@ public:
          return get_currency_balance(N(gstio.token), symbol(CORE_SYMBOL), act);
     }
 
-    void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr) {
+    void set_code_abi(const account_name& account, const vector<uint8_t>& wasm, const char* abi, const private_key_type* signer = nullptr) {
        wdump((account));
-        set_code(account, wast, signer);
+        set_code(account, wasm, signer);
         set_abi(account, abi, signer);
         if (account == config::system_account_name) {
            const auto& accnt = control->db().get<account_object,by_name>( account );
@@ -183,13 +194,19 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Create gstio.msig and gstio.token
         create_accounts({N(gstio.msig), N(gstio.token), N(gstio.ram), N(gstio.ramfee), N(gstio.stake), N(gstio.vpay), N(gstio.bpay), N(gstio.saving) });
-
         // Set code for the following accounts:
         //  - gstio (code: gstio.bios) (already set by tester constructor)
         //  - gstio.msig (code: gstio.msig)
         //  - gstio.token (code: gstio.token)
-        set_code_abi(N(gstio.msig), gstio_msig_wast, gstio_msig_abi);//, &gstio_active_pk);
-        set_code_abi(N(gstio.token), gstio_token_wast, gstio_token_abi); //, &gstio_active_pk);
+        // set_code_abi(N(gstio.msig), contracts::gstio_msig_wasm(), contracts::gstio_msig_abi().data());//, &gstio_active_pk);
+        // set_code_abi(N(gstio.token), contracts::gstio_token_wasm(), contracts::gstio_token_abi().data()); //, &gstio_active_pk);
+
+        set_code_abi(N(gstio.msig),
+                     contracts::gstio_msig_wasm(),
+                     contracts::gstio_msig_abi().data());//, &gstio_active_pk);
+        set_code_abi(N(gstio.token),
+                     contracts::gstio_token_wasm(),
+                     contracts::gstio_token_abi().data()); //, &gstio_active_pk);
 
         // Set privileged for gstio.msig and gstio.token
         set_privileged(N(gstio.msig));
@@ -217,8 +234,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            create_account( a.aname, config::system_account_name );
         }
 
-        // Set gstio.system to gstio
-        set_code_abi(config::system_account_name, gstio_system_wast, gstio_system_abi);
+        deploy_contract();
 
         // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {
@@ -262,12 +278,14 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         votepro( N(whale3), {N(proda), N(prodb), N(prodc), N(prodd), N(prode)} );
 
         // Total Stakes = b1 + whale2 + whale3 stake = (100,000,000 - 1,000) + (20,000,000 - 1,000) + (30,000,000 - 1,000)
+        vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
+        
         BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1499999997000);
 
         // No producers will be set, since the total activated stake is less than 150,000,000
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         auto active_schedule = control->head_block_state()->active_schedule;
-        BOOST_TEST(active_schedule.producers.size() == 1);
+        BOOST_TEST(active_schedule.producers.size() == 1u);
         BOOST_TEST(active_schedule.producers.front().producer_name == "gstio");
 
         // Spend some time so the producer pay pool is filled by the inflation rate

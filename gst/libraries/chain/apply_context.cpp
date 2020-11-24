@@ -36,14 +36,15 @@ void apply_context::exec_one( action_trace& trace )
    action_receipt r;
    r.receiver         = receiver;
    r.act_digest       = digest_type::hash(act);
-
    trace.trx_id = trx_context.id;
    trace.block_num = control.pending_block_state()->block_num;
    trace.block_time = control.pending_block_time();
    trace.producer_block_id = control.pending_producer_block_id();
    trace.act = act;
    trace.context_free = context_free;
-
+   if(trx_context.is_activation()){
+      trace.gas_status = true;
+   }
    const auto& cfg = control.get_global_properties().configuration;
    try {
       try {
@@ -51,7 +52,7 @@ void apply_context::exec_one( action_trace& trace )
          privileged = a.privileged;
          auto native = control.find_apply_handler( receiver, act.account, act.name );
          if( native ) {
-            if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
                control.check_action_list( act.account, act.name );
             }
@@ -61,7 +62,7 @@ void apply_context::exec_one( action_trace& trace )
          if( a.code.size() > 0
              && !(act.account == config::system_account_name && act.name == N( setcode ) &&
                   receiver == config::system_account_name) ) {
-            if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
                control.check_action_list( act.account, act.name );
             }
@@ -103,6 +104,48 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 {
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
+
+   trace.account_gst_gas = std::move( _account_gst_gas );
+   _account_gst_gas.clear();
+   //激活状态,把固定收取手续费的累加
+   if(trx_context.is_activation()){
+      auto act = trace.act;
+      name action_name;  //动作名
+      name account;      //部署合约的账户名？？？
+      name accountname;  //合约执行人
+      auto data = act;   //获取提交的合约动作及合约名
+      action_name = data.name;
+      account = data.account;
+      auto permission = data.authorization;
+      for(auto data2 : permission){      //获取执行人
+         accountname = data2.actor;
+         if(action_name == "newaccount" || action_name== "transfer")   //根据当前的动作名是否消耗gas
+         {
+            bool is_use_gst = true;  //是否消耗了固定的gas
+            if(action_name == "transfer"){
+               auto create = data.data_as<transfer>();
+               if ("gstio.gas" == create.to || "gstio.gas" == accountname){ //如果收款人或者转账人是gstio.gas，此次交易没有消耗gas
+                  is_use_gst = false;
+               }
+               //std::cout<<"D__data里面的数据为： "<<name{create.to}<<std::endl;
+            }else
+            {
+               auto create = data.data_as<newaccount>();
+               if ("gstio.gas" == create.name){ //
+                  is_use_gst = false;
+               }
+            }
+            
+            if(is_use_gst){
+               auto p = trace.account_gst_gas.emplace( accountname, 100 );
+               if( !p.second ) {
+                  p.first->gas += 100;
+               }
+            }
+         }
+      }
+      
+   }
 
    trace.console = _pending_console_output.str();
    reset_console();
@@ -204,6 +247,48 @@ void apply_context::execute_inline( action&& a ) {
    auto* code = control.db().find<account_object, by_name>(a.account);
    GST_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
+   if(trx_context.is_activation()){
+      //测试打印
+      name action_name;  //动作名
+      name account;      //部署合约的账户名？？？
+      name accountname;  //合约执行人
+      //std::cout<<"D__在这里调用内联"<<std::endl;
+      action_name = a.name;
+      account = a.account;
+      auto permission = a.authorization;
+      for(auto data : permission){
+         accountname = data.actor;
+         if(action_name == "newaccount" || action_name== "transfer")   //根据当前的动作名是否收手续费
+               {
+                  bool is_use_gst = true; //是否收手续费
+                  if(action_name== "transfer"){
+                     auto create = a.data_as<transfer>();
+                     if ("gstio.gas" == create.to || "gstio.gas" == accountname ){
+                        is_use_gst = false;
+                     }
+                     //std::cout<<"D__data里面的数据为： "<<name{create.to}<<std::endl;
+                  }
+                  if(is_use_gst){
+                     //std::cout << "D__inline当前动作为"<<name{action_name}<<"，开始走收手续费流程..." << std::endl;
+                     trx_context.consume_gst_usage(accountname);
+                  }
+               }
+      }
+   }
+   //std::cout << "D__inline当前动作为"<<name{action_name}<<std::endl;
+   //std::cout << "D__inline合约部署账户名"<<name{account}<<std::endl;
+
+   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
+   flat_set<account_name> actors;
+
+   bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+   bool send_to_self = (a.account == receiver);
+   bool inherit_parent_authorizations = (!disallow_send_to_self_bypass && send_to_self && (receiver == act.account) && control.is_producing_block());
+
+   flat_set<permission_level> inherited_authorizations;
+   if( inherit_parent_authorizations ) {
+      inherited_authorizations.reserve( a.authorization.size() );
+   }
 
    for( const auto& auth : a.authorization ) {
       auto* actor = control.db().find<account_object, by_name>(auth.actor);
@@ -212,22 +297,51 @@ void apply_context::execute_inline( action&& a ) {
       GST_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
                   "inline action's authorizations include a non-existent permission: ${permission}",
                   ("permission", auth) );
+      if( enforce_actor_whitelist_blacklist )
+         actors.insert( auth.actor );
+
+      if( inherit_parent_authorizations && std::find(act.authorization.begin(), act.authorization.end(), auth) != act.authorization.end() ) {
+         inherited_authorizations.insert( auth );
+      }
    }
 
-   // No need to check authorization if: replaying irreversible blocks; contract is privileged; or, contract is calling itself.
-   if( !control.skip_auth_check() && !privileged && a.account != receiver ) {
-      control.get_authorization_manager()
-             .check_authorization( {a},
-                                   {},
-                                   {{receiver, config::gstio_code_name}},
-                                   control.pending_block_time() - trx_context.published,
-                                   std::bind(&transaction_context::checktime, &this->trx_context),
-                                   false
-                                 );
+   if( enforce_actor_whitelist_blacklist ) {
+      control.check_actor_list( actors );
+   }
 
-      //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
-      //          with sending an inline action that requires a delay even though the decision to send that inline
-      //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
+   // No need to check authorization if replaying irreversible blocks or contract is privileged
+   if( !control.skip_auth_check() && !privileged ) {
+      try {
+         control.get_authorization_manager()
+                .check_authorization( {a},
+                                      {},
+                                      {{receiver, config::gstio_code_name}},
+                                      control.pending_block_time() - trx_context.published,
+                                      std::bind(&transaction_context::checktime, &this->trx_context),
+                                      false,
+                                      inherited_authorizations
+                                    );
+
+         //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
+         //          with sending an inline action that requires a delay even though the decision to send that inline
+         //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
+      } catch( const fc::exception& e ) {
+         if( disallow_send_to_self_bypass || !send_to_self ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            subjective_block_production_exception new_exception(FC_LOG_MESSAGE( error, "Authorization failure with inline action sent to self"));
+            for (const auto& log: e.get_log()) {
+               new_exception.append_log(log);
+            }
+            throw new_exception;
+         }
+      } catch( ... ) {
+         if( disallow_send_to_self_bypass || !send_to_self ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            GST_THROW(subjective_block_production_exception, "Unexpected exception occurred validating inline action sent to self");
+         }
+      }
    }
 
    _inline_actions.emplace_back( move(a) );
@@ -249,7 +363,10 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    GST_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
-   control.validate_referenced_accounts( trx );
+
+   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
+                                             && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
+   trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
 
    // Charge ahead of time for the additional net usage needed to retire the deferred transaction
    // whether that be by successfully executing, soft failure, hard failure, or expiration.
@@ -264,16 +381,30 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          require_authorization(payer); /// uses payer's storage
       }
 
-      // if a contract is deferring only actions to itself then there is no need
-      // to check permissions, it could have done everything anyway.
-      bool check_auth = false;
-      for( const auto& act : trx.actions ) {
-         if( act.account != receiver ) {
-            check_auth = true;
-            break;
+      // Originally this code bypassed authorization checks if a contract was deferring only actions to itself.
+      // The idea was that the code could already do whatever the deferred transaction could do, so there was no point in checking authorizations.
+      // But this is not true. The original implementation didn't validate the authorizations on the actions which allowed for privilege escalation.
+      // It would make it possible to bill RAM to some unrelated account.
+      // Furthermore, even if the authorizations were forced to be a subset of the current action's authorizations, it would still violate the expectations
+      // of the signers of the original transaction, because the deferred transaction would allow billing more CPU and network bandwidth than the maximum limit
+      // specified on the original transaction.
+      // So, the deferred transaction must always go through the authorization checking if it is not sent by a privileged contract.
+      // However, the old logic must still be considered because it cannot objectively change until a consensus protocol upgrade.
+
+      bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+
+      auto is_sending_only_to_self = [&trx]( const account_name& self ) {
+         bool send_to_self = true;
+         for( const auto& act : trx.actions ) {
+            if( act.account != self ) {
+               send_to_self = false;
+               break;
+            }
          }
-      }
-      if( check_auth ) {
+         return send_to_self;
+      };
+
+      try {
          control.get_authorization_manager()
                 .check_authorization( trx.actions,
                                       {},
@@ -282,6 +413,22 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                                       std::bind(&transaction_context::checktime, &this->trx_context),
                                       false
                                     );
+      } catch( const fc::exception& e ) {
+         if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            subjective_block_production_exception new_exception(FC_LOG_MESSAGE( error, "Authorization failure with sent deferred transaction consisting only of actions to self"));
+            for (const auto& log: e.get_log()) {
+               new_exception.append_log(log);
+            }
+            throw new_exception;
+         }
+      } catch( ... ) {
+         if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            GST_THROW(subjective_block_production_exception, "Unexpected exception occurred validating sent deferred transaction consisting only of actions to self");
+         }
       }
    }
 
@@ -439,24 +586,29 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
 
 int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
 //   require_write_lock( scope );
+   //std::cout<<"D__db_store_i64在这里进行了加表操作???"<<std::endl;
+   //std::cout << "D__打印传入的payer" << payer <<std::endl;
    const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
-
+   //std::cout << "D__打印account_name()" << account_name() <<std::endl;
    GST_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
 
    const auto& obj = db.create<key_value_object>( [&]( auto& o ) {
       o.t_id        = tableid;
       o.primary_key = id;
-      o.value.resize( buffer_size );
+      o.value.assign( buffer, buffer_size );
       o.payer       = payer;
-      memcpy( o.value.data(), buffer, buffer_size );
+      //std::cout<<"D__key_value_object中的payer:"<<payer<<std::endl;
    });
 
    db.modify( tab, [&]( auto& t ) {
+      //std::cout<<"D__当前新增加的表明: "<<t.table<<std::endl;
+      //std::cout<<"D__表中table"<<t.payer<<std::endl;
      ++t.count;
    });
 
    int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
+   //std::cout<<"D__当前表的大小: "<<billable_size<<std::endl;
    update_db_usage( payer, billable_size);
 
    keyval_cache.cache_table( tab );
@@ -488,8 +640,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    }
 
    db.modify( obj, [&]( auto& o ) {
-     o.value.resize( buffer_size );
-     memcpy( o.value.data(), buffer, buffer_size );
+     o.value.assign( buffer, buffer_size );
      o.payer = payer;
    });
 }
@@ -659,6 +810,16 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
    auto p = _account_ram_deltas.emplace( account, ram_delta );
    if( !p.second ) {
       p.first->delta += ram_delta;
+   }
+   //激活gas消耗才写入
+   if(trx_context.is_activation()){
+      //std::cout<<"D__开始写入"<<std::endl;
+      //std::cout<<"D__account:"<<account<<std::endl;
+      std::cout<<"D__gas: " <<ram_delta<<std::endl;
+      auto p = _account_gst_gas.emplace( account, ram_delta );
+      if( !p.second ) {
+         p.first->gas += ram_delta;
+      }
    }
 }
 

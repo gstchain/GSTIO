@@ -73,10 +73,6 @@ namespace gstio {
 
 } /// namespace gstio
 
-namespace fc {
-   extern std::unordered_map<std::string,logger>& get_logger_map();
-}
-
 const fc::string logger_name("bnet_plugin");
 fc::logger plugin_logger;
 std::string peer_log_format;
@@ -128,6 +124,7 @@ struct hello {
    uint32_t                      last_irr_block_num = 0;
    vector<block_id_type>         pending_block_ids;
 };
+// @swap user, password
 FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(protocol_version)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
 
 struct hello_extension_irreversible_only {};
@@ -289,7 +286,6 @@ namespace gstio {
         boost::asio::io_service&                                       _ios;
         unique_ptr<ws::stream<tcp::socket>>                            _ws;
         boost::asio::strand< boost::asio::io_context::executor_type>   _strand;
-        boost::asio::io_service&                                       _app_ios;
 
         methods::get_block_by_number::method_type& _get_block_by_number;
 
@@ -306,7 +302,7 @@ namespace gstio {
 
 
         int next_session_id()const {
-           static int session_count = 0;
+           static std::atomic<int> session_count(0);
            return ++session_count;
         }
 
@@ -319,7 +315,6 @@ namespace gstio {
          _ios(socket.get_io_service()),
          _ws( new ws::stream<tcp::socket>(move(socket)) ),
          _strand(_ws->get_executor() ),
-         _app_ios( app().get_io_service() ),
          _get_block_by_number( app().get_method<methods::get_block_by_number>() )
         {
             _session_num = next_session_id();
@@ -338,7 +333,6 @@ namespace gstio {
          _ios(ioc),
          _ws( new ws::stream<tcp::socket>(ioc) ),
          _strand( _ws->get_executor() ),
-         _app_ios( app().get_io_service() ),
          _get_block_by_number( app().get_method<methods::get_block_by_number>() )
         {
            _session_num = next_session_id();
@@ -441,7 +435,7 @@ namespace gstio {
            if( itr != _transaction_status.end() ) {
               if( !itr->known_by_peer() ) {
                  _transaction_status.modify( itr, [&]( auto& stat ) {
-                    stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->trx.expiration );
+                    stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->packed_trx->expiration() );
                  });
               }
               return;
@@ -555,8 +549,7 @@ namespace gstio {
            for( const auto& receipt : s->block->transactions ) {
               if( receipt.trx.which() == 1 ) {
                  const auto& pt = receipt.trx.get<packed_transaction>();
-                 // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-                 const auto& tid = pt.get_uncached_id();
+                 const auto& tid = pt.id();
                  auto itr = _transaction_status.find( tid );
                  if( itr != _transaction_status.end() )
                     _transaction_status.erase(itr);
@@ -570,7 +563,7 @@ namespace gstio {
         template<typename L>
         void async_get_pending_block_ids( L&& callback ) {
            /// send peer my head block status which is read from chain plugin
-           _app_ios.post( [self = shared_from_this(),callback]{
+           app().post(priority::low, [self = shared_from_this(),callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
               auto lib = control.last_irreversible_block_num();
               auto head = control.fork_db_head_block_id();
@@ -595,7 +588,7 @@ namespace gstio {
 
         template<typename L>
         void async_get_block_num( uint32_t blocknum, L&& callback ) {
-           _app_ios.post( [self = shared_from_this(), blocknum, callback]{
+           app().post(priority::low, [self = shared_from_this(), blocknum, callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
               signed_block_ptr sblockptr;
               try {
@@ -765,7 +758,7 @@ namespace gstio {
               return false;
 
 
-           auto ptrx_ptr = std::make_shared<packed_transaction>( start->trx->packed_trx );
+           auto ptrx_ptr = start->trx->packed_trx;
 
            idx.modify( start, [&]( auto& stat ) {
               stat.mark_known_by_peer();
@@ -788,7 +781,7 @@ namespace gstio {
 
             /// if something changed, the next block doesn't link to the last
             /// block we sent, local chain must have switched forks
-            if( nextblock->previous != _last_sent_block_id ) {
+            if( nextblock->previous != _last_sent_block_id && _last_sent_block_id != block_id_type() ) {
                 if( !is_known_by_peer( nextblock->previous ) ) {
                   _last_sent_block_id  = _local_lib_id;
                   _last_sent_block_num = _local_lib;
@@ -919,9 +912,9 @@ namespace gstio {
          * the connection from being closed.
          */
         void wait_on_app() {
-            app().get_io_service().post( 
-                boost::asio::bind_executor( _strand, [self=shared_from_this()]{ self->do_read(); } )
-            );
+           app().post( priority::medium, [self = shared_from_this()]() {
+              app().get_io_service().post( boost::asio::bind_executor( self->_strand, [self] { self->do_read(); } ) );
+           } );
         }
 
         void on_message( const bnet_message& msg, fc::datastream<const char*>& ds ) {
@@ -1005,7 +998,7 @@ namespace gstio {
            auto id = b->id();
            mark_block_status( id, true, true );
 
-           app().get_channel<incoming::channels::block>().publish(b);
+           app().get_channel<incoming::channels::block>().publish(priority::high, b);
 
            mark_block_transactions_known_by_peer( b );
         }
@@ -1014,8 +1007,7 @@ namespace gstio {
            for( const auto& receipt : b->transactions ) {
               if( receipt.trx.which() == 1 ) {
                  const auto& pt = receipt.trx.get<packed_transaction>();
-                 // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-                 const auto& id = pt.get_uncached_id();
+                 const auto& id = pt.id();
                  mark_transaction_known_by_peer(id);
               }
            }
@@ -1041,26 +1033,7 @@ namespace gstio {
            return false;
         }
 
-        void on( const packed_transaction_ptr& p ) {
-           peer_ilog(this, "received packed_transaction_ptr");
-           if (!p) {
-              peer_elog(this, "bad packed_transaction_ptr : null pointer");
-              GST_THROW(transaction_exception, "bad transaction");
-           }
-           if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY )
-              return;
-
-          // ilog( "recv trx ${n}", ("n", id) );
-           if( p->expiration() < fc::time_point::now() ) return;
-
-           // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-           const auto& id = p->get_uncached_id();
-
-           if( mark_transaction_known_by_peer( id ) )
-              return;
-
-           app().get_channel<incoming::channels::transaction>().publish(p);
-        }
+        void on( const packed_transaction_ptr& p );
 
         void on_write( boost::system::error_code ec, std::size_t bytes_transferred ) {
            boost::ignore_unused(bytes_transferred);
@@ -1174,7 +1147,7 @@ namespace gstio {
          channels::accepted_transaction::channel_type::handle   _on_appled_trx_handle;
 
          void async_add_session( std::weak_ptr<session> wp ) {
-            app().get_io_service().post( [wp,this]{
+            app().post(priority::low, [wp,this]{
                if( auto l = wp.lock() ) {
                   _sessions[l.get()] = wp;
                }
@@ -1182,7 +1155,6 @@ namespace gstio {
          }
 
          void on_session_close( const session* s ) {
-            verify_strand_in_this_thread(app().get_io_service().get_executor(), __func__, __LINE__);
             auto itr = _sessions.find(s);
             if( _sessions.end() != itr )
                _sessions.erase(itr);
@@ -1190,7 +1162,7 @@ namespace gstio {
 
          template<typename Call>
          void for_each_session( Call callback ) {
-            app().get_io_service().post([this, callback = callback] {
+            app().post(priority::low, [this, callback = callback] {
                for (const auto& item : _sessions) {
                   if (auto ses = item.second.lock()) {
                      ses->_ios.post(boost::asio::bind_executor(
@@ -1246,7 +1218,6 @@ namespace gstio {
          };
 
          void on_reconnect_peers() {
-             verify_strand_in_this_thread(app().get_io_service().get_executor(), __func__, __LINE__);
              for( const auto& peer : _connect_to_peers ) {
                 bool found = false;
                 for( const auto& con : _sessions ) {
@@ -1274,10 +1245,10 @@ namespace gstio {
             /// add some random delay so that all my peers don't attempt to reconnect to me
             /// at the same time after shutting down..
             _timer->expires_from_now( boost::posix_time::microseconds( 1000000*(10+rand()%5) ) );
-            _timer->async_wait([=](const boost::system::error_code& ec) {
+            _timer->async_wait(app().get_priority_queue().wrap(priority::low, [=](const boost::system::error_code& ec) {
                 if( ec ) { return; }
                 on_reconnect_peers();
-            });
+            }));
          }
    };
 
@@ -1367,8 +1338,7 @@ namespace gstio {
    }
 
    void bnet_plugin::plugin_startup() {
-      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
-         plugin_logger = fc::get_logger_map()[logger_name];
+      handle_sighup(); // Sets logger
 
       wlog( "bnet startup " );
 
@@ -1402,8 +1372,10 @@ namespace gstio {
 
 
       if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY ) {
-         my->_request_trx = false;
-         ilog( "setting bnet-no-trx to true since in read-only mode" );
+         if (my->_request_trx) {
+            my->_request_trx = false;
+            ilog( "forced bnet-no-trx to true since in read-only mode" );
+         }
       }
 
       const auto address = boost::asio::ip::make_address( my->_bnet_endpoint_address );
@@ -1463,11 +1435,15 @@ namespace gstio {
       // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl
    }
 
+   void bnet_plugin::handle_sighup() {
+      fc::logger::update( logger_name, plugin_logger );
+   }
+
 
    session::~session() {
      wlog( "close session ${n}",("n",_session_num) );
      std::weak_ptr<bnet_plugin_impl> netp = _net_plugin;
-     _app_ios.post( [netp,ses=this]{
+      app().post(priority::low, [netp,ses=this]{
         if( auto net = netp.lock() )
            net->on_session_close(ses);
      });
@@ -1494,7 +1470,7 @@ namespace gstio {
    }
 
    void session::check_for_redundant_connection() {
-     app().get_io_service().post( [self=shared_from_this()]{
+     app().post(priority::low, [self=shared_from_this()]{
        self->_net_plugin->for_each_session( [self]( auto ses ){
          if( ses != self && ses->_remote_peer_id == self->_remote_peer_id ) {
            self->do_goodbye( "redundant connection" );
@@ -1557,4 +1533,25 @@ namespace gstio {
 
    }
 
+   void session::on( const packed_transaction_ptr& p ) {
+      peer_ilog(this, "received packed_transaction_ptr");
+      if (!p) {
+        peer_elog(this, "bad packed_transaction_ptr : null pointer");
+        GST_THROW(transaction_exception, "bad transaction");
+      }
+      if( !_net_plugin->_request_trx )
+        return;
+
+      // ilog( "recv trx ${n}", ("n", id) );
+      if( p->expiration() < fc::time_point::now() ) return;
+
+      const auto& id = p->id();
+
+      if( mark_transaction_known_by_peer( id ) )
+        return;
+
+      auto ptr = std::make_shared<transaction_metadata>(p);
+
+      app().get_channel<incoming::channels::transaction>().publish(priority::low, ptr);
+   }
 } /// namespace gstio

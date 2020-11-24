@@ -178,6 +178,62 @@ namespace gstio { namespace chain { namespace resource_limits {
       >
    >;
 
+   //gst1.7.7新增一个收手续费的资源
+   struct resource_gst_object : public chainbase::object<resource_gst_object_type, resource_gst_object> {
+      OBJECT_CTOR(resource_gst_object)
+
+      id_type id;
+      account_name               owner;
+      bool pending = true;                       //与resource_limits_object保持同步
+
+
+      uint64_t                   gst_bytes = 0;   //用gst交换的资源,这里不再设成-1，没有无限使用的账号
+      uint64_t                   gst_usage = 0;   //已经使用的资源
+       
+   };
+
+   using resource_gst_index = chainbase::shared_multi_index_container<
+      resource_gst_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<resource_gst_object, resource_gst_object::id_type, &resource_gst_object::id>>,
+         ordered_unique<tag<by_owner>, 
+            composite_key<resource_gst_object,
+               BOOST_MULTI_INDEX_MEMBER(resource_gst_object, bool, pending),
+               BOOST_MULTI_INDEX_MEMBER(resource_gst_object, account_name, owner)
+            >
+         >
+      >
+   >;
+
+   //gst1.7.7
+   /*
+   * 当重播以后，为了不干扰之前的交易流程，新增一张表
+   * 此表状态为true时，走新版流程；否则，走老版流程
+   * account_name为唯一创世节点名字
+   */
+   struct resource_activation_gst_object : public chainbase::object<resource_activation_gst_object_type, resource_activation_gst_object> {
+      OBJECT_CTOR(resource_activation_gst_object)
+
+      id_type id;
+      account_name               owner;
+      bool                       pending = true;                       //与resource_limits_object保持同步 
+      bool                       is_activation = false;                //激活状态
+   };
+
+   using resource_activation_gst_index = chainbase::shared_multi_index_container<
+      resource_activation_gst_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<resource_activation_gst_object, resource_activation_gst_object::id_type, &resource_activation_gst_object::id>>,
+         ordered_unique<tag<by_owner>, 
+            composite_key<resource_activation_gst_object,
+               BOOST_MULTI_INDEX_MEMBER(resource_activation_gst_object, bool, pending),
+               BOOST_MULTI_INDEX_MEMBER(resource_activation_gst_object, account_name, owner)
+            >
+         >
+      >
+   >;
+
+
    class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
       OBJECT_CTOR(resource_limits_config_object);
       id_type id;
@@ -260,6 +316,8 @@ namespace gstio { namespace chain { namespace resource_limits {
 
 } } } /// gstio::chain::resource_limits
 
+CHAINBASE_SET_INDEX_TYPE(gstio::chain::resource_limits::resource_activation_gst_object,         gstio::chain::resource_limits::resource_activation_gst_index)
+CHAINBASE_SET_INDEX_TYPE(gstio::chain::resource_limits::resource_gst_object,         gstio::chain::resource_limits::resource_gst_index)
 CHAINBASE_SET_INDEX_TYPE(gstio::chain::resource_limits::resource_limits_object,        gstio::chain::resource_limits::resource_limits_index)
 CHAINBASE_SET_INDEX_TYPE(gstio::chain::resource_limits::resource_usage_object,         gstio::chain::resource_limits::resource_usage_index)
 CHAINBASE_SET_INDEX_TYPE(gstio::chain::resource_limits::resource_limits_config_object, gstio::chain::resource_limits::resource_limits_config_index)
@@ -267,6 +325,9 @@ CHAINBASE_SET_INDEX_TYPE(gstio::chain::resource_limits::resource_limits_state_ob
 
 FC_REFLECT(gstio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
 
+// @ignore pending
+FC_REFLECT(gstio::chain::resource_limits::resource_activation_gst_object, (owner)(pending)(is_activation))
+FC_REFLECT(gstio::chain::resource_limits::resource_gst_object, (owner)(gst_bytes)(gst_usage)(pending))
 FC_REFLECT(gstio::chain::resource_limits::resource_limits_object, (owner)(net_weight)(cpu_weight)(ram_bytes))
 FC_REFLECT(gstio::chain::resource_limits::resource_usage_object,  (owner)(net_usage)(cpu_usage)(ram_usage))
 FC_REFLECT(gstio::chain::resource_limits::resource_limits_config_object, (cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))

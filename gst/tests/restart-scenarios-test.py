@@ -113,7 +113,7 @@ try:
         errorExit("Cluster sync wait failed.")
 
     Print ("Relaunch dead cluster nodes instances.")
-    if cluster.relaunchGstInstances() is False:
+    if cluster.relaunchGstInstances(cachePopen=True) is False:
         errorExit("Failed to relaunch Gst instances")
     Print("nodgst instances relaunched.")
 
@@ -130,8 +130,16 @@ try:
     if not cluster.waitOnClusterSync():
         errorExit("Cluster sync wait failed.")
 
+    if killGstInstances:
+        atLeastOne=False
+        for node in cluster.getNodes():
+            if node.popenProc is not None:
+                atLeastOne=True
+                node.interruptAndVerifyExitStatus()
+        assert atLeastOne, "Test is setup to verify that a cleanly interrupted nodgst exits with an exit status of 0, but this test may no longer be setup to do that"
+
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killGstInstances, killGstInstances, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killGstInstances=killGstInstances, killWallet=killGstInstances, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
 
 exit(0)

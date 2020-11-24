@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #include <gstio/net_api_plugin/net_api_plugin.hpp>
 #include <gstio/chain/exceptions.hpp>

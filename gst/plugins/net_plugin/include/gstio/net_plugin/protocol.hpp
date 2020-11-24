@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in gst/LICENSE.txt
+ *  @copyright defined in gst/LICENSE
  */
 #pragma once
 #include <gstio/chain/block.hpp>
@@ -139,8 +139,8 @@ namespace gstio {
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      signed_block,
-                                      packed_transaction>;
+                                      signed_block,         // which = 7
+                                      packed_transaction>;  // which = 8
 
 } // namespace gstio
 
