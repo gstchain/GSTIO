@@ -424,7 +424,7 @@ namespace gstio {
            fc::datastream<const char*> ds( a.packed_action_trace.data(), a.packed_action_trace.size() );
            //在一定高度使用新版的结构体来解析,旧版结构体不兼容新版结构体，新版的可以兼容旧版
            //即使重播，新的结构体是兼容旧的结构体的
-           if( a.block_num < 50 ){
+           if( a.block_num < 87500000 ){
                action_traceold t;
                //std::cout<<"D__当前block_num "<<a.block_num<<std::endl;
                fc::raw::unpack( ds, t );
