@@ -422,21 +422,59 @@ namespace gstio {
         while( start_itr != end_itr ) {
            const auto& a = db.get<action_history_object, by_action_sequence_num>( start_itr->action_sequence_num );
            fc::datastream<const char*> ds( a.packed_action_trace.data(), a.packed_action_trace.size() );
-           action_trace t;
-           fc::raw::unpack( ds, t );
-           result.actions.emplace_back( ordered_action_result{
-                                 start_itr->action_sequence_num,
-                                 start_itr->account_sequence_num,
-                                 a.block_num, a.block_time,
-                                 chain.to_variant_with_abi(t, abi_serializer_max_time)
-                                 });
+           //在一定高度使用新版的结构体来解析,旧版结构体不兼容新版结构体，新版的可以兼容旧版
+           //即使重播，新的结构体是兼容旧的结构体的
+           if( a.block_num < 50 ){
+               action_traceold t;
+               //std::cout<<"D__当前block_num "<<a.block_num<<std::endl;
+               fc::raw::unpack( ds, t );
+               result.actions.emplace_back( ordered_action_result{
+                                       start_itr->action_sequence_num,
+                                       start_itr->account_sequence_num,
+                                       a.block_num, a.block_time,
+                                       chain.to_variant_with_abi(t, abi_serializer_max_time)
+                                       });
 
-           end_time = fc::time_point::now();
-           if( end_time - start_time > fc::microseconds(100000) ) {
-              result.time_limit_exceeded_error = true;
-              break;
+               end_time = fc::time_point::now();
+               if( end_time - start_time > fc::microseconds(100000) ) {
+                  result.time_limit_exceeded_error = true;
+                  break;
+               }
+               ++start_itr;
+           }else{
+               action_trace t;
+               //std::cout<<"D__当前block_num "<<a.block_num<<std::endl;
+               fc::raw::unpack( ds, t );
+               result.actions.emplace_back( ordered_action_result{
+                                       start_itr->action_sequence_num,
+                                       start_itr->account_sequence_num,
+                                       a.block_num, a.block_time,
+                                       chain.to_variant_with_abi(t, abi_serializer_max_time)
+                                       });
+
+               end_time = fc::time_point::now();
+               if( end_time - start_time > fc::microseconds(100000) ) {
+                  result.time_limit_exceeded_error = true;
+                  break;
+               }
+               ++start_itr;
            }
-           ++start_itr;
+         //   std::cout<<"D__当前block_num "<<a.block_num<<std::endl;
+         //   //std::cout<<"D__当前end_itr "<<end_itr<<std::endl;
+         //   fc::raw::unpack( ds, t );
+         //   result.actions.emplace_back( ordered_action_result{
+         //                         start_itr->action_sequence_num,
+         //                         start_itr->account_sequence_num,
+         //                         a.block_num, a.block_time,
+         //                         chain.to_variant_with_abi(t, abi_serializer_max_time)
+         //                         });
+
+         //   end_time = fc::time_point::now();
+         //   if( end_time - start_time > fc::microseconds(100000) ) {
+         //      result.time_limit_exceeded_error = true;
+         //      break;
+         //   }
+         //   ++start_itr;
         }
         return result;
       }

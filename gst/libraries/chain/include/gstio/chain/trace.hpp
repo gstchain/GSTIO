@@ -47,14 +47,39 @@ namespace gstio { namespace chain {
       flat_set<account_delta>         account_ram_deltas;
       fc::optional<fc::exception>     except;
       //新增字段
-      flat_set<account_gas>            account_gst_gas; 
       bool                 gas_status=false;
+      flat_set<account_gas>            account_gst_gas={}; 
    };
 
    struct action_trace : public base_action_trace {
       using base_action_trace::base_action_trace;
 
       vector<action_trace> inline_traces;
+   };
+
+   //新增老的结构体兼容v1.7.7以前的交易记录
+   struct base_action_traceold {
+      base_action_traceold( const action_receipt& r ):receipt(r){}
+      base_action_traceold(){}
+
+      action_receipt       receipt;
+      action               act;
+      bool                 context_free = false;
+      fc::microseconds     elapsed;
+      string               console;
+
+      transaction_id_type  trx_id; ///< the transaction that generated this action
+      uint32_t             block_num = 0;
+      block_timestamp_type block_time;
+      fc::optional<block_id_type>     producer_block_id;
+      flat_set<account_delta>         account_ram_deltas;
+      fc::optional<fc::exception>     except;
+   };
+
+   struct action_traceold : public base_action_traceold{
+      using base_action_traceold::base_action_traceold;
+      
+      vector<action_traceold> inline_traces;
    };
 
    struct transaction_trace;
@@ -88,8 +113,15 @@ FC_REFLECT( gstio::chain::base_action_trace,
                     (receipt)(act)(context_free)(elapsed)(console)(trx_id)
                     (block_num)(block_time)(producer_block_id)(account_ram_deltas)(except)(gas_status)(account_gst_gas) )
 
+FC_REFLECT( gstio::chain::base_action_traceold,
+                    (receipt)(act)(context_free)(elapsed)(console)(trx_id)
+                    (block_num)(block_time)(producer_block_id)(account_ram_deltas)(except))
+
 FC_REFLECT_DERIVED( gstio::chain::action_trace,
                     (gstio::chain::base_action_trace), (inline_traces) )
+
+FC_REFLECT_DERIVED( gstio::chain::action_traceold,
+                    (gstio::chain::base_action_traceold), (inline_traces) )
 
 FC_REFLECT( gstio::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
                                              (receipt)(elapsed)(net_usage)(scheduled)
