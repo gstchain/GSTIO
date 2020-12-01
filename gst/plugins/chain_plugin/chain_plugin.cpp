@@ -1865,6 +1865,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.head_block_time = db.head_block_time();
 
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
+   //新增临时记录gas资源
+   rm.get_account_limits2(result.account_name, result.ram_quota);
 
    const auto& a = db.get_account(result.account_name);
 

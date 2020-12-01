@@ -460,6 +460,21 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
       net_weight = buo.net_weight;
       cpu_weight = buo.cpu_weight;
    }
+   
+}
+
+void resource_limits_manager::get_account_limits2( const account_name& account, int64_t& ram_bytes)const{
+   const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
+   if(pending_limits != nullptr){   
+      //查询剩余的gas
+      auto& limits1 = * pending_limits;
+      ram_bytes = limits1.gst_bytes - limits1.gst_usage;
+      if(ram_bytes < 0){
+         ram_bytes = 0;
+      }
+   }else{
+      ram_bytes = 0;
+   }
 }
 
 

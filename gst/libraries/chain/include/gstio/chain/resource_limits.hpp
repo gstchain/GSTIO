@@ -63,6 +63,10 @@ namespace gstio { namespace chain { namespace resource_limits {
          bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
 
+         //重写一个get_account_limits2，临时用来记录gas的消耗
+         //如果将来重播，删除此函数，为get_account_results结构体增加记录gas的字段
+         void get_account_limits2( const account_name& account, int64_t& ram_bytes) const;
+
          //设置gst兑换的资源
          bool set_gst_limits(const account_name& account, int64_t gst_bytes);
 
