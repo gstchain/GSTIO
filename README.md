@@ -2,11 +2,19 @@
 
 ### Ubuntu 搭建 GST 环境
 
-**1、下载 GST 代码**  
+**1、版本要求**
+
+  1.Ubuntu 16.04
+
+  2.Ubuntu 18.04
+
+**2、下载 GST 代码**  
+
 >源码地址： https://github.com/gstchain/gstio.git  
 >git clone https://github.com/gstchain/gstio.git  
 
-**2、编译 & 安装**  
+**3、编译 & 安装**  
+
 >cd gst  
 >./gstio_build.sh  (出现GSTIO时编译完成)  
 >./gstio_install.sh
