@@ -13,13 +13,13 @@ GSTIO 目前支持一下操作系统:
 ## 下载 GST 代码
 
 >源码地址： https://github.com/gstchain/gstio.git  
->git clone https://github.com/gstchain/gstio.git  
+>`git clone https://github.com/gstchain/gstio.git`  
 
 ## 编译 & 安装
 
->`cd gstio/gst/scripts`
->`./gstio_build.sh`
->`./gstio_install.sh`
+>`cd gstio/gst/scripts`  
+>`./gstio_build.sh`  
+>`./gstio_install.sh`  
 
 ## 同步主网区块配置
 
