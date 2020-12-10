@@ -2,13 +2,13 @@
 
 ## 支持的操作系统
 GSTIO 目前支持一下操作系统:  
->1. Amazon 2017.09 and higher
->2. Centos 7
->3. Fedora 25 and higher (Fedora 27 recommended)
->4. Mint 18
->5. Ubuntu 16.04
->6. Ubuntu 18.04
->7. MacOS Darwin 10.12 and higher (MacOS 10.14.x recommended)
+>Amazon 2017.09 and higher
+>Centos 7
+>Fedora 25 and higher (Fedora 27 recommended)
+>Mint 18
+>Ubuntu 16.04
+>Ubuntu 18.04
+>MacOS Darwin 10.12 and higher (MacOS 10.14.x recommended)
 
 ## 下载 GST 代码
 
