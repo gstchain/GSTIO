@@ -1,24 +1,27 @@
 # GST
 
-### Ubuntu 搭建 GST 环境
+## 支持的操作系统
+GSTIO 目前支持一下操作系统:  
+1. Amazon 2017.09 and higher
+2. Centos 7
+3. Fedora 25 and higher (Fedora 27 recommended)
+4. Mint 18
+5. Ubuntu 16.04
+6. Ubuntu 18.04
+7. MacOS Darwin 10.12 and higher (MacOS 10.14.x recommended)
 
-**1、版本要求**  
-
->1. Ubuntu 16.04
->2. Ubuntu 18.04
-
-**2、下载 GST 代码**  
+## 下载 GST 代码
 
 >源码地址： https://github.com/gstchain/gstio.git  
 >git clone https://github.com/gstchain/gstio.git  
 
-**3、编译 & 安装**  
+## 编译 & 安装
 
->cd gst  
->./gstio_build.sh  (出现GSTIO时编译完成)  
->./gstio_install.sh
+>`cd gstio/gst/scripts`
+>`./gstio_build.sh`
+>`./gstio_install.sh`
 
-**3、同步主网区块配置**  
+## 同步主网区块配置
 
 __a. genesis.json__  
 第一次同步需要加上--genesis-json参数,文件配置如下  
@@ -251,15 +254,15 @@ p2p-server-address = localhost:9900
 # p2p-server-address = 
 
 # The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network. (gstio::net_plugin)
-p2p-peer-address = host:port
-p2p-peer-address = host:port
-p2p-peer-address = host:port
+# p2p-peer-address = host:port
+# p2p-peer-address = host:port
+# p2p-peer-address = host:port
 
 # Maximum number of client nodes from any single IP address (gstio::net_plugin)
 p2p-max-nodes-per-host = 1
 
 # The name supplied to identify this node amongst the peers. (gstio::net_plugin)
-agent-name = "GST Test Agent"
+# agent-name = "GST Test Agent"
 
 # Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined. (gstio::net_plugin)
 allowed-connection = any
@@ -370,16 +373,16 @@ txn-reference-block-lag = 0
 plugin = gstio::producer_plugin
 plugin = gstio::producer_api_plugin
 plugin = gstio::chain_api_plugin
-#plugin = gstio::history_api_plugin
+plugin = gstio::history_api_plugin
 plugin = gstio::chain_plugin
-#plugin = gstio::history_plugin
+plugin = gstio::history_plugin
 plugin = gstio::net_plugin
 plugin = gstio::net_api_plugin
 plugin = gstio::http_plugin
-#plugin = gstio::mongo_db_plugin
-#mongodb-uri = mongodb://127.0.0.1:27017/gstdb
+plugin = gstio::mongo_db_plugin
+mongodb-uri = mongodb://127.0.0.1:27017/gstdb
 ```
-**4、启动节点,同步主网**  
+## 启动节点,同步主网
 ```
 nodgst 
 -h     #查看帮助
