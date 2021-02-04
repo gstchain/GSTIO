@@ -1291,7 +1291,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
    return results;
 }
 
-   read_only::get_table_scopes_rows_result read_only::get_table_scopes_rows( const read_only::get_table_scopes_rows_params& params )const {
+read_only::get_table_scopes_rows_result read_only::get_table_scopes_rows( const read_only::get_table_scopes_rows_params& params )const {
       get_table_scopes_rows_result results;
 
       if("stat" == params.table){
@@ -1301,7 +1301,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
             .table       = params.table,
             .lower_bound = "",
             .upper_bound = "",
-            .limit       = 0,
+            .limit       = params.limit,
          };
 
          // 获取table scope
@@ -1342,9 +1342,10 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
                   str += c;
                   v >>= 8;
                }
-               std::cout << str;
+               std::cout << "D__str：" << str << std::endl;
                scope.symbol = str;
-
+               transform(str.begin(), str.end(), str.begin(), ::tolower);  //socpe转成小写，大写状态无法解析
+               scope.scope = name(str);
                results.scopes.emplace_back( scope );
             }
 
@@ -1408,7 +1409,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
                .table       = params.table,
                .lower_bound = "",
                .upper_bound = "",
-               .limit       = 0,
+               .limit       = UINT_MAX,
             };
             // 获取所有的table scope
             const auto table_scope_result_all = get_table_by_scope( table_scope_params_all );

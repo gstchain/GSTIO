@@ -94,7 +94,7 @@ void apply_context::exec_one( action_trace& trace )
    trx_context.executed.emplace_back( move(r) );
 
    finalize_trace( trace, start );
-
+   
    if ( control.contracts_console() ) {
       print_debug(receiver, trace);
    }
@@ -123,11 +123,11 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
          {
             bool is_use_gst = true;  //是否消耗了固定的gas
             if(action_name == "transfer"){
+               config::token_account_name = account.value;
                auto create = data.data_as<transfer>();
                if ("gstio.gas" == create.to || "gstio.gas" == accountname){ //如果收款人或者转账人是gstio.gas，此次交易没有消耗gas
                   is_use_gst = false;
                }
-               //std::cout<<"D__data里面的数据为： "<<name{create.to}<<std::endl;
             }else
             {
                auto create = data.data_as<newaccount>();
@@ -252,7 +252,6 @@ void apply_context::execute_inline( action&& a ) {
       name action_name;  //动作名
       name account;      //部署合约的账户名？？？
       name accountname;  //合约执行人
-      //std::cout<<"D__在这里调用内联"<<std::endl;
       action_name = a.name;
       account = a.account;
       auto permission = a.authorization;
@@ -261,22 +260,24 @@ void apply_context::execute_inline( action&& a ) {
          if(action_name == "newaccount" || action_name== "transfer")   //根据当前的动作名是否收手续费
                {
                   bool is_use_gst = true; //是否收手续费
+
                   if(action_name== "transfer"){
+                   
+                     config::token_account_name = account.value;
                      auto create = a.data_as<transfer>();
                      if ("gstio.gas" == create.to || "gstio.gas" == accountname ){
                         is_use_gst = false;
                      }
-                     //std::cout<<"D__data里面的数据为： "<<name{create.to}<<std::endl;
+              
                   }
                   if(is_use_gst){
-                     //std::cout << "D__inline当前动作为"<<name{action_name}<<"，开始走收手续费流程..." << std::endl;
+                   
                      trx_context.consume_gst_usage(accountname);
                   }
                }
       }
    }
-   //std::cout << "D__inline当前动作为"<<name{action_name}<<std::endl;
-   //std::cout << "D__inline合约部署账户名"<<name{account}<<std::endl;
+
 
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
    flat_set<account_name> actors;
@@ -586,11 +587,10 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
 
 int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
 //   require_write_lock( scope );
-   //std::cout<<"D__db_store_i64在这里进行了加表操作???"<<std::endl;
-   //std::cout << "D__打印传入的payer" << payer <<std::endl;
+
    const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
-   //std::cout << "D__打印account_name()" << account_name() <<std::endl;
+   
    GST_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
 
    const auto& obj = db.create<key_value_object>( [&]( auto& o ) {
@@ -598,17 +598,16 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
       o.primary_key = id;
       o.value.assign( buffer, buffer_size );
       o.payer       = payer;
-      //std::cout<<"D__key_value_object中的payer:"<<payer<<std::endl;
+    
    });
 
    db.modify( tab, [&]( auto& t ) {
-      //std::cout<<"D__当前新增加的表明: "<<t.table<<std::endl;
-      //std::cout<<"D__表中table"<<t.payer<<std::endl;
+     
      ++t.count;
    });
 
    int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
-   //std::cout<<"D__当前表的大小: "<<billable_size<<std::endl;
+   
    update_db_usage( payer, billable_size);
 
    keyval_cache.cache_table( tab );
@@ -813,8 +812,6 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
    }
    //激活gas消耗才写入
    if(trx_context.is_activation()){
-      //std::cout<<"D__开始写入"<<std::endl;
-      //std::cout<<"D__account:"<<account<<std::endl;
       std::cout<<"D__gas: " <<ram_delta<<std::endl;
       auto p = _account_gst_gas.emplace( account, ram_delta );
       if( !p.second ) {

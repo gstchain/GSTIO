@@ -27,6 +27,9 @@ const static uint64_t system_account_name    = N(gstio);
 const static uint64_t null_account_name      = N(gstio.null);
 const static uint64_t producers_account_name = N(gstio.prods);
 
+//新增解析合约名，默认为gstio.token
+static uint64_t token_account_name = N(gstio.token);
+
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
 const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0

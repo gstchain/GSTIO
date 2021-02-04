@@ -162,7 +162,8 @@ struct transfer{
    string            memo;
 
    static account_name get_account(){
-      return N(gstio.token);
+      //std::cout << "D__contract_types: " <<  config::token_account_name << std::endl;
+      return config::token_account_name;
    }
 
    static action_name get_name(){

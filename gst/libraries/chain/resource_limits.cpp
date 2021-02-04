@@ -207,7 +207,7 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
      u.ram_usage += ram_delta;
    });
 
-   //std::cout<<"D__当前用户"<<account<<"消耗的gstbyte: "<<ram_delta<<std::endl;
+   std::cout<<"D__当前用户"<<account<<"消耗的gstbyte: "<<ram_delta<<std::endl;
    if(is_activation()){
       const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
       if(pending_limits != nullptr){    //系统第一次部署合约会走这儿
@@ -428,10 +428,10 @@ bool resource_limits_manager::set_gst_limits( const account_name& account, int64
 
 void resource_limits_manager::set_gas_limits(bool flag){
    name acname("gstio");
-   //std::cout<<"D__是否激活： "<<flag<<std::endl;
+   std::cout<<"D__是否激活： "<<flag<<std::endl;
    const auto*  activation_gst = _db.find<resource_activation_gst_object, by_owner>( boost::make_tuple(true, acname) );
    if(activation_gst == nullptr){
-      //std::cout<<"D__第一次创建激活账户"<<std::endl;
+      std::cout<<"D__第一次创建激活账户"<<std::endl;
       _db.create<resource_activation_gst_object>([&](resource_activation_gst_object& activation_gst){
          activation_gst.owner = acname;
          activation_gst.pending = true;
@@ -439,7 +439,7 @@ void resource_limits_manager::set_gas_limits(bool flag){
        });
    }else
    {
-      //std::cout<<"D__修改激活状态"<<std::endl;
+      std::cout<<"D__修改激活状态"<<std::endl;
       auto & gas = *activation_gst;
       _db.modify( gas, [&]( resource_activation_gst_object& gas ){
          gas.is_activation = flag;

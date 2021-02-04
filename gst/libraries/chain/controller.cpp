@@ -621,9 +621,7 @@ struct controller_impl {
       ram_delta += 2*config::billable_size_v<permission_object>;
       ram_delta += owner_permission.auth.get_billable_size();
       ram_delta += active_permission.auth.get_billable_size();
-      //std::cout << "D__当前创建的系统用户: " << name <<std::endl;
-      //std::cout <<"D__当前的ram_delta:" << ram_delta << std::endl;
-
+      
       resource_limits.add_pending_ram_usage(name, ram_delta);
       resource_limits.verify_account_ram_usage(name);
    }
@@ -839,32 +837,7 @@ struct controller_impl {
       trx->scheduled = true;
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
-       //内联异步调用合约走到这里
-      //std::cout << "D__1进入push_scheduled_transaction函数: " << std::endl;
-      //gst_usage(dtrx.actions , trx_context);
-      // auto actions=dtrx.actions;
-      // std::cout << "D__1进入push_transaction函数..." << std::endl;
-      // name action_name;  //动作名
-      // name account;      //部署合约的账户名？？？
-      // name accountname;  //合约执行人
-      // for(auto data : actions){   //获取提交的合约动作及合约名
-      //    std::cout << "D__1actions长度" <<actions.size()<< std::endl;
-      //    action_name = data.name;
-      //    account = data.account;
-      //    auto permission = data.authorization;
-      //    for(auto data2 : permission){      //获取执行人
-      //       std::cout << "D__1permission长度" <<permission.size()<< std::endl;
-      //       accountname = data2.actor;
-      //       if(action_name == "newaccount" || action_name== "transfer")   //根据当前的动作名是否收手续费
-      //       {
-      //          std::cout << "D__1当前动作为"<<name{action_name}<<"，开始走收手续费流程..." << std::endl;
-      //          trx_context.consume_gst_usage(accountname);
-      //       }
-      //       std::cout<<"D__push_transaction发起人 "<<name{accountname}<<std::endl;
-      //    }
-      //    std::cout<<"D__push_transaction当前拦截的动作 "<<name{action_name}<<std::endl;
-      //    std::cout<<"D__push_transaction当前部署的合约名??? "<<name{account}<<std::endl;
-      // }
+     
       transaction_trace_ptr trace;
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
@@ -906,8 +879,7 @@ struct controller_impl {
          if(trx_context.is_activation()){
             gst_usage(dtrx.actions , trx_context);
          }
-         //std::cout << "D__1push_scheduled_transaction函数执行结束 " << std::endl;
-
+         
          auto restore = make_block_restore_point();
 
          trace->receipt = push_receipt( gtrx.trx_id,
@@ -1012,7 +984,6 @@ struct controller_impl {
    }
 
    void  gst_usage(const vector<action>& actions,transaction_context& trx_context){
-      //std::cout << "D1__进入push_transaction函数..." << std::endl;
       name action_name;  //动作名
       name account;      //部署合约的账户名？？？
       name accountname;  //合约执行人
@@ -1026,30 +997,30 @@ struct controller_impl {
             {
                bool is_use_gst = true;  //是否收手续费
                if(action_name == "transfer"){
+                
+                  config::token_account_name = account.value;
+                  std::cout<<"D__部署合约的账户名： "<<name{account}<<std::endl;
                   auto create = data.data_as<transfer>();
                   if ("gstio.gas" == create.to || "gstio.gas" == accountname){ //如果收款人或者转账人是gstio.gas，此次转账不收手续费
                      is_use_gst = false;
                   }
-                  //std::cout<<"D__data里面的数据为： "<<name{create.to}<<std::endl;
+             
                }else
                {
                   auto create = data.data_as<newaccount>();
                   //暂定兑换gas资源账户为gstio.gas。如果旧链已经有用户创建这个，再根据实际情况改
                   if ("gstio.gas" == create.name){ //优化操作，可以直接在部署系统合约后再创建兑换gas资源的账户
                      is_use_gst = false;
-                     //std::cout << "D__当前创建的用户为"<<name{create.name}<<"，创建此账户不收取手续费..." << std::endl;
+                    
                   }
                }
                
                if(is_use_gst){
-                  //std::cout << "D__当前动作为"<<name{action_name}<<"，开始走收手续费流程..." << std::endl;
+               
                   trx_context.consume_gst_usage(accountname);
                }
             }
-            //std::cout<<"D1__push_transaction发起人 "<<name{accountname}<<std::endl;
          }
-         //std::cout<<"D1__push_transaction当前拦截的动作 "<<name{action_name}<<std::endl;
-         //std::cout<<"D1__push_transaction当前部署的合约名??? "<<name{account}<<std::endl;
       }
    }
 
@@ -1086,37 +1057,7 @@ struct controller_impl {
          transaction_context trx_context(self, trn, trx->id, start);
 
          auto actions=trn.actions;
-         //gst_usage(actions ,trx_context );
-         // std::cout << "D1__进入push_transaction函数..." << std::endl;
-         // name action_name;  //动作名
-         // name account;      //部署合约的账户名？？？
-         // name accountname;  //合约执行人
-         // for(auto data : actions){   //获取提交的合约动作及合约名
-         //    action_name = data.name;
-         //    account = data.account;
-         //    auto permission = data.authorization;
-         //    for(auto data2 : permission){      //获取执行人
-         //       accountname = data2.actor;
-         //       if(action_name == "newaccount" || action_name== "transfer")   //根据当前的动作名是否收手续费
-         //       {
-         //          bool is_use_gst = true;  //是否收手续费
-         //          if(action_name == "transfer"){
-         //             auto create = data.data_as<transfer>();
-         //             if ("gstio.gas" == create.to ){
-         //                is_use_gst = false;
-         //             }
-         //             std::cout<<"D__data里面的数据为： "<<name{create.to}<<std::endl;
-         //          }
-         //          if(is_use_gst){
-         //             std::cout << "D__当前动作为"<<name{action_name}<<"，开始走收手续费流程..." << std::endl;
-         //             trx_context.consume_gst_usage(accountname);
-         //          }
-         //       }
-         //       std::cout<<"D1__push_transaction发起人 "<<name{accountname}<<std::endl;
-         //    }
-         //    std::cout<<"D1__push_transaction当前拦截的动作 "<<name{action_name}<<std::endl;
-         //    std::cout<<"D1__push_transaction当前部署的合约名??? "<<name{account}<<std::endl;
-         // }
+         
 
          //transaction_context trx_context(self, trn, trx->id, start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
