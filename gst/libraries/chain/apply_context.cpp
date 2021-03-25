@@ -124,6 +124,7 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
             bool is_use_gst = true;  //是否消耗了固定的gas
             if(action_name == "transfer"){
                config::token_account_name = account.value;
+               std::cout<<"D__部署合约的账户名： "<<name{account}<<std::endl;
                auto create = data.data_as<transfer>();
                if ("gstio.gas" == create.to || "gstio.gas" == accountname){ //如果收款人或者转账人是gstio.gas，此次交易没有消耗gas
                   is_use_gst = false;
