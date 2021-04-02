@@ -87,7 +87,7 @@ namespace gstio { namespace chain {
 
       template<typename T>
       T data_as()const {
-         GST_ASSERT( account == T::get_account(), action_type_exception, "account is not consistent with action struct" );
+         //GST_ASSERT( account == T::get_account(), action_type_exception, "account is not consistent with action struct" );
          GST_ASSERT( name == T::get_name(), action_type_exception, "action name is not consistent with action struct"  );
          return fc::raw::unpack<T>(data);
       }
