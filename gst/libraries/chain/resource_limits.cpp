@@ -255,7 +255,7 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    if(is_activation()){
       const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
       if(pending_limits != nullptr){  //系统第一次部署合约会走这儿
-         if(pending_limits->gst_bytes >= 0 && pending_limits->owner != "gstio.gas"){ //gstio.gas用户不计算gas消耗
+         if(pending_limits->gst_bytes >= 0 && pending_limits->owner != "gstio.gas" && pending_limits->owner != "gstio"){ //gstio.gas用户不计算gas消耗
             GST_ASSERT( pending_limits->gst_usage <= static_cast<uint64_t>(pending_limits->gst_bytes), gstio_assert_message_exception,
                         "account ${account} has insufficient gas; needs ${needs} gas has ${available} gas",
                         ("account", account)("needs",pending_limits->gst_usage)("available",pending_limits->gst_bytes)              );
