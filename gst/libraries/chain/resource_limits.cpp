@@ -207,7 +207,7 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
      u.ram_usage += ram_delta;
    });
 
-   std::cout<<"D__当前用户"<<account<<"消耗的gstbyte: "<<ram_delta<<std::endl;
+   // std::cout<<"D__当前用户"<<account<<"消耗的gstbyte: "<<ram_delta<<std::endl;
    if(is_activation()){
       const auto* pending_limits = _db.find<resource_gst_object, by_owner>( boost::make_tuple(true, account) );
       if(pending_limits != nullptr){    //系统第一次部署合约会走这儿
