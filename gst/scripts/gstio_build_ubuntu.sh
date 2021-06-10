@@ -159,7 +159,7 @@ printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
-	curl -LO https://dl.bintray.com/boostorg/release/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/source/boost_$BOOST_VERSION.tar.bz2 \
+	curl -LO https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/boost_$BOOST_VERSION.tar.bz2 \
 	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
 	&& cd $BOOST_ROOT \
 	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
